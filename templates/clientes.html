@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Clientes{% endblock %}
+{% block page_title %}<i class="fas fa-users me-2" style="color:var(--primary-light)"></i>Clientes{% endblock %}
+
+{% block content %}
+<div class="section-header mb-4">
+    <div>
+        <div class="section-title">Gestión de Clientes</div>
+        <div class="section-subtitle">Clientes registrados y saldos de crédito</div>
+    </div>
+    <button class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#modalNuevoCliente" id="btn-nuevo-cliente">
+        <i class="fas fa-user-plus me-2"></i>Nuevo Cliente
+    </button>
+</div>
+
+<!-- Resumen créditos -->
+{% set total_credito = clientes | selectattr('saldo_credito', 'gt', 0) | map(attribute='saldo_credito') | sum %}
+{% if total_credito > 0 %}
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card orange">
+            <div class="stat-icon orange"><i class="fas fa-hand-holding-dollar"></i></div>
+            <div class="stat-value" style="font-size:1.4rem">{{ total_credito | formatear_moneda }}</div>
+            <div class="stat-label">Total crédito pendiente</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card pink">
+            <div class="stat-icon pink"><i class="fas fa-users"></i></div>
+            <div class="stat-value">{{ clientes | selectattr('saldo_credito', 'gt', 0) | list | length }}</div>
+            <div class="stat-label">Clientes con deuda</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card purple">
+            <div class="stat-icon purple"><i class="fas fa-user-check"></i></div>
+            <div class="stat-value">{{ clientes | length }}</div>
+            <div class="stat-label">Total clientes</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Tabla de clientes -->
+<div class="table-card">
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Nombre</th>
+                    <th>NIT / RUT</th>
+                    <th>Teléfono</th>
+                    <th>Saldo crédito</th>
+                    <th>Registrado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in clientes %}
+                <tr>
+                    <td><span class="text-muted-custom">{{ c.id }}</span></td>
+                    <td>
+                        <a href="{{ url_for('clientes.detalle', cid=c.id) }}"
+                           style="color:var(--text-primary);text-decoration:none;font-weight:500">
+                            <i class="fas fa-user me-2" style="color:var(--text-muted);font-size:0.75rem"></i>
+                            {{ c.nombre }}
+                        </a>
+                    </td>
+                    <td><span class="text-muted-custom">{{ c.nit_rut or '—' }}</span></td>
+                    <td>{{ c.telefono or '—' }}</td>
+                    <td>
+                        {% if c.saldo_credito > 0 %}
+                        <strong style="color:var(--warning)">
+                            {{ c.saldo_credito | formatear_moneda }}
+                        </strong>
+                        {% else %}
+                        <span style="color:var(--success)">
+                            <i class="fas fa-circle-check me-1"></i>Al día
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td style="color:var(--text-muted);font-size:0.82rem">
+                        {{ c.fecha_registro[:10] if c.fecha_registro else '—' }}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('clientes.detalle', cid=c.id) }}"
+                           class="btn-action edit" title="Ver historial" id="btn-ver-{{ c.id }}">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        {% if c.saldo_credito > 0 %}
+                        <button class="btn-action success ms-1"
+                                onclick="openPago({{ c.id }}, '{{ c.nombre }}', {{ c.saldo_credito | int }})"
+                                title="Registrar abono" id="btn-pago-{{ c.id }}">
+                            <i class="fas fa-dollar-sign"></i>
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center py-5" style="color:var(--text-muted)">
+                        <i class="fas fa-users fa-2x mb-2 d-block" style="opacity:0.2"></i>
+                        No hay clientes registrados aún
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if session.get('rol') == 'admin' %}
+<!-- ── Modal Nuevo Cliente ── -->
+<div class="modal fade" id="modalNuevoCliente" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--bg-sidebar);border:1px solid var(--border-color);color:white;">
+            <div class="modal-header" style="border-color:var(--border-color)">
+                <h5 class="modal-title" style="color:white">
+                    <i class="fas fa-user-plus me-2" style="color:var(--primary-light)"></i>Nuevo Cliente
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('clientes.nuevo') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre Completo *</label>
+                        <input type="text" name="nombre" class="form-control" placeholder="Ej: Distribuidora Nacional" required id="nuevo-cliente-nombre">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">NIT / RUT <small class="text-muted-custom">(opcional)</small></label>
+                        <input type="text" name="nit_rut" class="form-control" placeholder="Ej: 900.123.456-7" id="nuevo-cliente-nit">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Teléfono <small class="text-muted-custom">(opcional)</small></label>
+                        <input type="tel" name="telefono" class="form-control" placeholder="Ej: 300 123 4567" id="nuevo-cliente-tel">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Correo Electrónico <small class="text-muted-custom">(opcional)</small></label>
+                        <input type="email" name="email" class="form-control" placeholder="Ej: cliente@correo.com" id="nuevo-cliente-email">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Dirección Física <small class="text-muted-custom">(opcional)</small></label>
+                        <input type="text" name="direccion" class="form-control" placeholder="Ej: Calle 50 #10-20" id="nuevo-cliente-dir">
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-color:var(--border-color)">
+                    <button type="button" class="btn text-muted-custom" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-primary-custom" id="btn-guardar-cliente">
+                        <i class="fas fa-floppy-disk me-2"></i>Guardar Cliente
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal Pago de Crédito ── -->
+<div class="modal fade" id="modalPago" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--bg-sidebar);border:1px solid var(--border-color);color:white;">
+            <div class="modal-header" style="border-color:var(--border-color)">
+                <h5 class="modal-title" style="color:white">
+                    <i class="fas fa-dollar-sign me-2" style="color:var(--success)"></i>Registrar Abono
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="pagoForm">
+                <div class="modal-body">
+                    <p style="color:var(--text-secondary)">
+                        Cliente: <strong id="pagoClienteNombre" style="color:var(--text-primary)"></strong><br>
+                        Saldo pendiente: <strong id="pagoSaldo" style="color:var(--warning)"></strong>
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label">Monto del abono (COP) *</label>
+                        <input type="number" name="monto" id="pagoMonto" class="form-control"
+                               min="0" step="100" placeholder="0" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notas <small class="text-muted-custom">(opcional)</small></label>
+                        <input type="text" name="notas" class="form-control" placeholder="Ej: Pago en efectivo">
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-color:var(--border-color)">
+                    <button type="button" class="btn text-muted-custom" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-primary-custom" style="background:linear-gradient(135deg,#059669,#10B981)" id="btn-guardar-abono">
+                        <i class="fas fa-check me-2"></i>Registrar Abono
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function openPago(cid, nombre, saldo) {
+    document.getElementById('pagoClienteNombre').textContent = nombre;
+    document.getElementById('pagoSaldo').textContent = '$' + saldo.toLocaleString('es-CO');
+    document.getElementById('pagoMonto').max = saldo;
+    document.getElementById('pagoMonto').value = '';
+    document.getElementById('pagoForm').action = '/clientes/' + cid + '/pagar';
+    new bootstrap.Modal(document.getElementById('modalPago')).show();
+}
+</script>
+{% endblock %}

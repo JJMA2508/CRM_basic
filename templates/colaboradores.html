@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+
+{% block title %}Colaboradores{% endblock %}
+{% block page_title %}Gestión de Colaboradores{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="row g-4">
+        <!-- Listado de Colaboradores -->
+        <div class="col-lg-8">
+            <div class="card p-4" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius);">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0" style="font-weight:700;"><i class="fas fa-users-gear text-warning me-2"></i>Equipo de Trabajo</h5>
+                    <span class="badge bg-secondary" style="font-size:0.8rem;">
+                        {{ conteo_usuarios }} / 5 Usuarios Totales
+                    </span>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Correo Electrónico</th>
+                                <th>Rol</th>
+                                <th>Estado</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for col in colaboradores %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="user-avatar" style="width:32px; height:32px; font-size:0.85rem;">{{ col.nombre[0].upper() }}</div>
+                                        <strong style="color:white;">{{ col.nombre }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span style="font-size:0.85rem; color:var(--text-muted);">{{ col.email }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge {% if col.rol == 'admin' %}bg-warning text-dark{% else %}bg-secondary{% endif %}" style="font-size:0.7rem;">
+                                        {{ col.rol | capitalize }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if col.activo == 1 %}
+                                    <span class="badge bg-success" style="font-size:0.7rem;"><i class="fas fa-circle-check me-1"></i>Activo</span>
+                                    {% else %}
+                                    <span class="badge bg-danger" style="font-size:0.7rem;"><i class="fas fa-ban me-1"></i>Suspendido</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <!-- Cambiar Contraseña -->
+                                        <button type="button" class="btn-action edit" title="Cambiar Contraseña" data-bs-toggle="modal" data-bs-target="#passModal{{ col.id }}" style="background:rgba(59,130,246,0.15); color:#3b82f6;">
+                                            <i class="fas fa-key"></i>
+                                        </button>
+                                        <!-- Activar / Suspender -->
+                                        <form method="POST" action="{{ url_for('usuarios.toggle_activo', uid=col.id) }}" style="display:inline;">
+                                            <button type="submit" class="btn-action {% if col.activo == 1 %}edit{% else %}success{% endif %}" title="{% if col.activo == 1 %}Suspender Colaborador{% else %}Activar Colaborador{% endif %}" style="{% if col.activo == 1 %}background:rgba(245,158,11,0.15); color:#f59e0b;{% else %}background:rgba(16,185,129,0.15); color:#10b981;{% endif %}">
+                                                <i class="fas {% if col.activo == 1 %}fa-pause{% else %}fa-play{% endif %}"></i>
+                                            </button>
+                                        </form>
+                                        <!-- Eliminar -->
+                                        <form method="POST" action="{{ url_for('usuarios.eliminar', uid=col.id) }}" onsubmit="return confirm('¿Seguro que deseas eliminar definitivamente a {{ col.nombre }}?')" style="display:inline;">
+                                            <button type="submit" class="btn-action danger" title="Eliminar Colaborador">
+                                                <i class="fas fa-trash-can"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                    <!-- Modal Cambiar Contraseña -->
+                                    <div class="modal fade" id="passModal{{ col.id }}" tabindex="-1" aria-labelledby="passModalLabel{{ col.id }}" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content" style="background:var(--bg-card); border:1px solid var(--border-color); color:white;">
+                                                <div class="modal-header" style="border-bottom:1px solid var(--border-color);">
+                                                    <h5 class="modal-title" id="passModalLabel{{ col.id }}" style="font-weight:700; font-size:1.05rem;">
+                                                        <i class="fas fa-key text-warning me-2"></i>Restablecer Contraseña: {{ col.nombre }}
+                                                    </h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <form method="POST" action="{{ url_for('usuarios.cambiar_password', uid=col.id) }}">
+                                                    <div class="modal-body text-start">
+                                                        <div class="mb-3">
+                                                            <label class="form-label" style="font-size:0.8rem; font-weight:600;">Nueva Contraseña *</label>
+                                                            <input type="password" name="nueva_password" class="form-control form-control-sm" placeholder="Mínimo 6 caracteres" required minlength="6" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer" style="border-top:1px solid var(--border-color);">
+                                                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                                                        <button type="submit" class="btn btn-warning btn-sm" style="font-weight:700; color:black;">Guardar Cambios</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    <i class="fas fa-users d-block mb-2" style="font-size:2rem; opacity:0.3;"></i>
+                                    No has registrado colaboradores adicionales aún.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Registrar Nuevo Colaborador -->
+        <div class="col-lg-4">
+            <div class="card p-4" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius); height:100%;">
+                <h5 class="mb-3" style="font-weight:700;"><i class="fas fa-plus-circle me-2 text-warning"></i>Nuevo Colaborador</h5>
+                
+                {% if limite_alcanzado %}
+                <div class="alert alert-warning mb-4" style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.2); color:#f59e0b; border-radius:var(--radius); font-size:0.8rem;">
+                    <i class="fas fa-triangle-exclamation me-2"></i>
+                    <strong>Límite alcanzado:</strong> Ya tienes 5 usuarios totales registrados (1 administrador principal y 4 colaboradores). No se permite agregar más.
+                </div>
+                {% endif %}
+                
+                <form method="POST" action="{{ url_for('usuarios.nuevo') }}">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre Completo *</label>
+                        <input type="text" name="nombre" class="form-control form-control-sm" placeholder="Ej: Juan Pérez" required {% if limite_alcanzado %}disabled{% endif %} style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Correo Electrónico *</label>
+                        <input type="email" name="email" class="form-control form-control-sm" placeholder="juan@negocio.com" required {% if limite_alcanzado %}disabled{% endif %} style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Contraseña Inicial *</label>
+                        <input type="password" name="password" class="form-control form-control-sm" placeholder="Mínimo 6 caracteres" required minlength="6" {% if limite_alcanzado %}disabled{% endif %} style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">Rol del Colaborador *</label>
+                        <select name="rol" class="form-select form-select-sm" required {% if limite_alcanzado %}disabled{% endif %} style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                            <option value="vendedor" selected>Vendedor (Solo ventas y facturas)</option>
+                            <option value="admin">Administrador (Control total del negocio)</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-warning w-100 py-2" {% if limite_alcanzado %}disabled{% endif %} style="font-weight:700; color:black;">
+                        <i class="fas fa-circle-check me-2"></i>Registrar Colaborador
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

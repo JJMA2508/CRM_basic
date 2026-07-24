@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}Reportes{% endblock %}
+{% block page_title %}<i class="fas fa-file-arrow-down me-2" style="color:var(--primary-light)"></i>Reportes{% endblock %}
+
+{% block content %}
+<div class="section-header mb-4">
+    <div>
+        <div class="section-title">Exportar Reportes</div>
+        <div class="section-subtitle">Descarga tus ventas en Excel o PDF</div>
+    </div>
+</div>
+
+<!-- ── Estado de Resultados ── -->
+<div class="table-card mb-4 p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 style="font-weight:700; margin-bottom:0;"><i class="fas fa-file-invoice-dollar me-2 text-warning"></i>Estado de Resultados Financiero</h5>
+        <form method="GET" action="{{ url_for('reportes.index') }}" class="d-flex align-items-center gap-2">
+            <input type="date" name="desde" class="form-control form-control-sm" value="{{ estado_resultados.desde }}" style="width:140px; background:var(--bg-input); border-color:var(--border-color); color:white;">
+            <span class="text-muted-custom" style="font-size:0.8rem;">a</span>
+            <input type="date" name="hasta" class="form-control form-control-sm" value="{{ estado_resultados.hasta }}" style="width:140px; background:var(--bg-input); border-color:var(--border-color); color:white;">
+            <button type="submit" class="btn btn-sm btn-warning" style="font-weight:700; color:black;">Filtrar</button>
+        </form>
+    </div>
+    
+    <div class="row g-3">
+        <div class="col-md-3">
+            <div class="p-3 rounded" style="background:rgba(16,185,129,0.05); border:1px solid rgba(16,185,129,0.2);">
+                <div class="text-muted-custom mb-1" style="font-size:0.75rem;">Ingresos Totales (Ventas)</div>
+                <strong style="font-size:1.3rem; color:var(--success);">+{{ estado_resultados.ventas | formatear_moneda }}</strong>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-3 rounded" style="background:rgba(239,68,68,0.05); border:1px solid rgba(239,68,68,0.2);">
+                <div class="text-muted-custom mb-1" style="font-size:0.75rem;">Costo de Adquisición (Compras)</div>
+                <strong style="font-size:1.3rem; color:var(--danger);">-{{ estado_resultados.compras | formatear_moneda }}</strong>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-3 rounded" style="background:rgba(239,68,68,0.05); border:1px solid rgba(239,68,68,0.2);">
+                <div class="text-muted-custom mb-1" style="font-size:0.75rem;">Gastos Operativos</div>
+                <strong style="font-size:1.3rem; color:var(--danger);">-{{ estado_resultados.gastos | formatear_moneda }}</strong>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-3 rounded" 
+                 style="background:{% if estado_resultados.ganancia_neta >= 0 %}rgba(16,185,129,0.08){% else %}rgba(239,68,68,0.08){% endif %}; 
+                        border:1px solid {% if estado_resultados.ganancia_neta >= 0 %}rgba(16,185,129,0.3){% else %}rgba(239,68,68,0.3){% endif %};">
+                <div class="text-muted-custom mb-1" style="font-size:0.75rem;">Utilidad Neta del Período</div>
+                <strong style="font-size:1.3rem; color:{% if estado_resultados.ganancia_neta >= 0 %}var(--success){% else %}var(--danger){% endif %};">
+                    {{ estado_resultados.ganancia_neta | formatear_moneda }}
+                </strong>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Excel -->
+    <div class="col-md-6">
+        <div class="stat-card green" style="padding:32px">
+            <div class="d-flex align-items-center gap-3 mb-4">
+                <div class="stat-icon green" style="width:56px;height:56px;font-size:1.6rem">
+                    <i class="fas fa-file-excel"></i>
+                </div>
+                <div>
+                    <div style="font-size:1.1rem;font-weight:700;color:var(--text-primary)">Exportar a Excel</div>
+                    <div style="font-size:0.82rem;color:var(--text-muted)">Archivo .xlsx con todos los detalles</div>
+                </div>
+            </div>
+            <form method="GET" action="{{ url_for('reportes.exportar_excel') }}" id="form-excel">
+                <div class="mb-3">
+                    <label class="form-label">Desde</label>
+                    <input type="date" name="desde" class="form-control" id="excel-desde">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Hasta</label>
+                    <input type="date" name="hasta" class="form-control" id="excel-hasta">
+                </div>
+                <button type="submit" class="btn-primary-custom w-100"
+                        style="background:linear-gradient(135deg,#059669,#10B981)" id="btn-exportar-excel">
+                    <i class="fas fa-download me-2"></i>Descargar Excel
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- PDF -->
+    <div class="col-md-6">
+        <div class="stat-card pink" style="padding:32px">
+            <div class="d-flex align-items-center gap-3 mb-4">
+                <div class="stat-icon pink" style="width:56px;height:56px;font-size:1.6rem">
+                    <i class="fas fa-file-pdf"></i>
+                </div>
+                <div>
+                    <div style="font-size:1.1rem;font-weight:700;color:var(--text-primary)">Exportar a PDF</div>
+                    <div style="font-size:0.82rem;color:var(--text-muted)">Reporte listo para imprimir</div>
+                </div>
+            </div>
+            <form method="GET" action="{{ url_for('reportes.exportar_pdf') }}" id="form-pdf">
+                <div class="mb-3">
+                    <label class="form-label">Desde</label>
+                    <input type="date" name="desde" class="form-control" id="pdf-desde">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Hasta</label>
+                    <input type="date" name="hasta" class="form-control" id="pdf-hasta">
+                </div>
+                <button type="submit" class="btn-primary-custom w-100"
+                        style="background:linear-gradient(135deg,#DB2777,#EC4899)" id="btn-exportar-pdf">
+                    <i class="fas fa-download me-2"></i>Descargar PDF
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Valoración del Inventario (Sólo Ferretería/General) -->
+    {% if inventario_val %}
+    <div class="col-md-6">
+        <div class="stat-card purple" style="padding:32px">
+            <div class="d-flex align-items-center gap-3 mb-4">
+                <div class="stat-icon purple" style="width:56px;height:56px;font-size:1.6rem">
+                    <i class="fas fa-boxes-stacked"></i>
+                </div>
+                <div>
+                    <div style="font-size:1.1rem;font-weight:700;color:var(--text-primary)">Valoración de Inventario</div>
+                    <div style="font-size:0.82rem;color:var(--text-muted)">Resumen de costos y ganancias estimadas</div>
+                </div>
+            </div>
+            <div class="d-flex flex-column gap-2" style="font-size:0.9rem;">
+                <div class="d-flex justify-content-between py-1" style="border-bottom:1px solid var(--border-color)">
+                    <span class="text-muted-custom">Costo Total del Stock:</span>
+                    <strong style="color:white;">{{ inventario_val.total_costo | formatear_moneda }}</strong>
+                </div>
+                <div class="d-flex justify-content-between py-1" style="border-bottom:1px solid var(--border-color)">
+                    <span class="text-muted-custom">Valor Total de Venta:</span>
+                    <strong style="color:var(--primary-light);">{{ inventario_val.total_venta | formatear_moneda }}</strong>
+                </div>
+                <div class="d-flex justify-content-between py-1">
+                    <span class="text-muted-custom">Ganancia Estimada (ROI):</span>
+                    <strong style="color:var(--success);">{{ inventario_val.total_ganancia | formatear_moneda }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Imprimir pantalla -->
+    <div class="col-md-6">
+        <div class="chart-card h-100">
+            <div class="chart-card-title">
+                <i class="fas fa-print" style="color:var(--accent)"></i>
+                Imprimir / Guardar
+            </div>
+            <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:16px">
+                También puedes ir al <a href="{{ url_for('ventas.historial') }}" style="color:var(--primary-light)">Historial de Ventas</a>
+                y usar <strong>Ctrl+P</strong> (o menú del navegador) para imprimir la tabla directamente.
+            </p>
+            <a href="{{ url_for('ventas.historial') }}" class="btn-primary-custom d-block text-center"
+               style="background:rgba(245,158,11,0.15);color:var(--accent);border:1px solid rgba(245,158,11,0.3);text-decoration:none;"
+               id="btn-ir-historial">
+                <i class="fas fa-table me-2"></i>Ver Historial
+            </a>
+        </div>
+    </div>
+
+    <!-- API Info -->
+    <div class="col-md-6">
+        <div class="chart-card h-100">
+            <div class="chart-card-title">
+                <i class="fas fa-code" style="color:var(--primary-light)"></i>
+                Integración n8n / API
+            </div>
+            <p style="color:var(--text-secondary);font-size:0.88rem;margin-bottom:12px">
+                Endpoint base: <code style="color:var(--primary-light);background:rgba(139,92,246,0.1);padding:2px 8px;border-radius:4px">/api/</code>
+            </p>
+            <div style="font-size:0.82rem;color:var(--text-muted)">
+                <div class="mb-1"><i class="fas fa-circle me-2" style="font-size:0.4rem;color:var(--success)"></i><code>GET /api/resumen</code> — Resumen del día</div>
+                <div class="mb-1"><i class="fas fa-circle me-2" style="font-size:0.4rem;color:var(--success)"></i><code>GET /api/ventas</code> — Listar ventas</div>
+                <div class="mb-1"><i class="fas fa-circle me-2" style="font-size:0.4rem;color:var(--success)"></i><code>GET /api/productos</code> — Catálogo</div>
+                <div class="mb-1"><i class="fas fa-circle me-2" style="font-size:0.4rem;color:var(--success)"></i><code>GET /api/clientes</code> — Clientes</div>
+                <div><i class="fas fa-circle me-2" style="font-size:0.4rem;color:var(--warning)"></i><code>POST /api/venta</code> — Crear venta</div>
+            </div>
+            <p style="color:var(--text-muted);font-size:0.78rem;margin-top:12px">
+                Header requerido: <code>X-API-Key: {{ api_key }}</code>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Poner fecha de hoy por defecto
+const hoy = new Date().toISOString().split('T')[0];
+const hace30 = new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+['excel-desde','pdf-desde'].forEach(id => document.getElementById(id).value = hace30);
+['excel-hasta','pdf-hasta'].forEach(id => document.getElementById(id).value = hoy);
+</script>
+{% endblock %}

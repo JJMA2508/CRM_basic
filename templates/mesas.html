@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}Mesas{% endblock %}
+{% block page_title %}<i class="fas fa-utensils me-2" style="color:var(--primary-light)"></i>Control de Mesas{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Resumen de mesas -->
+    <div class="col-12">
+        <div class="card p-3" style="background:var(--bg-card);border:1px solid var(--border-color);">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <h5 class="mb-1" style="font-weight:700;">Estado de las Mesas</h5>
+                    <p class="text-muted-custom mb-0" style="font-size:0.85rem;">Haz clic sobre una mesa para gestionar su comanda o realizar el cobro.</p>
+                </div>
+                <div class="d-flex gap-3 align-items-center">
+                    <span style="font-size:0.85rem;"><i class="fas fa-circle text-success me-1"></i> Libre</span>
+                    <span style="font-size:0.85rem;"><i class="fas fa-circle text-danger me-1"></i> Ocupada</span>
+                    {% if session.get('rol') == 'admin' %}
+                    <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#gestionarMesasModal" style="font-weight:700; color:black;">
+                        <i class="fas fa-gear me-1"></i> Configurar Mesas
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grilla de Mesas -->
+    <div class="col-12">
+        <div class="mesas-grid">
+            {% for m in mesas %}
+            <div class="mesa-card {% if m.estado == 'Ocupada' %}ocupada{% else %}libre{% endif %}" 
+                 id="mesa-card-{{ m.id }}"
+                 onclick="selectMesa({{ m.id }}, '{{ m.numero }}', '{{ m.estado }}', {{ m.total }}, {{ m.cant_items }})">
+                <div class="mesa-number">{{ m.numero }}</div>
+                <div class="mesa-status">
+                    {% if m.estado == 'Ocupada' %}
+                    <span class="badge bg-danger">Ocupada</span>
+                    {% else %}
+                    <span class="badge bg-success">Libre</span>
+                    {% endif %}
+                </div>
+                {% if m.estado == 'Ocupada' %}
+                <div class="mesa-total mt-2">
+                    <div style="font-size:0.85rem;color:var(--text-secondary);">Consumo actual:</div>
+                    <div style="font-size:1.15rem;font-weight:700;color:var(--primary-light);">{{ m.total | formatear_moneda }}</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);">{{ m.cant_items | int }} items</div>
+                </div>
+                {% else %}
+                <div class="mt-3 text-muted-custom" style="font-size:0.8rem;">
+                    Sin consumos <i class="fas fa-check-circle text-success ms-1"></i>
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="text-center py-5 w-100" style="grid-column: 1/-1; color:var(--text-muted);">
+                No hay mesas configuradas.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Detalles y Acciones de Mesa -->
+<div class="modal fade" id="mesaActionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:400px;">
+        <div class="modal-content" style="background:var(--bg-sidebar); border:1px solid var(--border-color); color:var(--text-primary);">
+            <div class="modal-header" style="border-bottom:1px solid var(--border-color)">
+                <h5 class="modal-title font-weight-bold" id="modalMesaTitle">Mesa</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="mb-3">
+                    <span id="modalMesaIcon" style="font-size:3rem; filter:drop-shadow(0 0 10px rgba(239,68,68,0.4));">🍕</span>
+                </div>
+                <h4 class="mb-2" id="modalMesaStatusText">Estado: Libre</h4>
+                <div id="modalMesaTotalSection" style="display:none;" class="mb-3">
+                    <p class="text-muted-custom mb-1">Monto consumido acumulado</p>
+                    <h2 style="color:var(--primary-light); font-weight:800;" id="modalMesaTotalVal">$0</h2>
+                    <span class="badge bg-secondary" id="modalMesaItemsVal">0 items</span>
+                </div>
+
+                <div class="d-flex flex-column gap-2 mt-4 px-3">
+                    <!-- Botón para ir al POS -->
+                    <a href="#" id="btnMesaPOS" class="btn btn-primary-custom w-100 text-decoration-none">
+                        <i class="fas fa-edit me-2"></i><span id="btnPOSText">Abrir Comanda</span>
+                    </a>
+                    
+                    <!-- Botón para liberar (sólo si está ocupada y se quiere anular o vaciar) -->
+                    <form id="formLiberarMesa" method="POST" action="" style="display:none;">
+                        <button type="submit" class="btn btn-outline-danger w-100" onclick="return confirm('¿Seguro que deseas liberar esta mesa? Se borrarán todos los productos agregados.')">
+                            <i class="fas fa-trash-can me-2"></i>Cancelar Comanda / Liberar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if session.get('rol') == 'admin' %}
+<!-- Modal Configurar Mesas -->
+<div class="modal fade" id="gestionarMesasModal" tabindex="-1" aria-labelledby="gestionarMesasModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--bg-card); border:1px solid var(--border-color); color:white;">
+            <div class="modal-header" style="border-bottom:1px solid var(--border-color);">
+                <h5 class="modal-title" id="gestionarMesasModalLabel" style="font-weight:700; font-size:1.05rem;">
+                    <i class="fas fa-gear text-warning me-2"></i>Configurar Mesas
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-start">
+                <!-- Agregar Mesa -->
+                <form method="POST" action="{{ url_for('ventas.agregar_mesa') }}" class="mb-4">
+                    <label class="form-label" style="font-size:0.8rem; font-weight:600;">Nombre o Número de Nueva Mesa *</label>
+                    <div class="d-flex gap-2">
+                        <input type="text" name="numero" class="form-control form-control-sm" placeholder="Ej: Mesa 6 o Barra 2" required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                        <button type="submit" class="btn btn-warning btn-sm" style="font-weight:700; color:black; white-space:nowrap;">
+                            <i class="fas fa-plus me-1"></i>Agregar
+                        </button>
+                    </div>
+                </form>
+                
+                <hr style="border-color:var(--border-color);">
+                
+                <!-- Listado para eliminar -->
+                <label class="form-label" style="font-size:0.8rem; font-weight:600; display:block; margin-bottom:12px;">Mesas Actuales</label>
+                <div style="max-height: 250px; overflow-y: auto;">
+                    <ul class="list-group list-group-flush">
+                        {% for m in mesas %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center" style="background:var(--bg-card); border-color:var(--border-color); color:white; padding: 10px 0;">
+                            <div>
+                                <strong style="color:white;">{{ m.numero }}</strong>
+                                <span class="badge {% if m.estado == 'Ocupada' %}bg-danger{% else %}bg-success{% endif %}" style="font-size:0.65rem; margin-left:8px;">
+                                    {{ m.estado }}
+                                </span>
+                            </div>
+                            {% if m.estado == 'Libre' %}
+                            <form method="POST" action="{{ url_for('ventas.eliminar_mesa', mid=m.id) }}" onsubmit="return confirm('¿Seguro que deseas eliminar la {{ m.numero }}?')" style="display:inline;">
+                                <button type="submit" class="btn btn-outline-danger btn-sm py-1 px-2" style="border-radius:6px; font-size:0.75rem;">
+                                    <i class="fas fa-trash-can"></i>
+                                </button>
+                            </form>
+                            {% else %}
+                            <span class="text-muted-custom" style="font-size:0.75rem;"><i class="fas fa-lock me-1"></i>Ocupada</span>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid var(--border-color);">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let currentMesaId = null;
+    const actionModal = new bootstrap.Modal(document.getElementById('mesaActionModal'));
+
+    function selectMesa(id, numero, estado, total, cantItems) {
+        currentMesaId = id;
+        document.getElementById('modalMesaTitle').textContent = 'Gestionar ' + numero;
+        
+        const statusText = document.getElementById('modalMesaStatusText');
+        const icon = document.getElementById('modalMesaIcon');
+        const totalSection = document.getElementById('modalMesaTotalSection');
+        const btnPOS = document.getElementById('btnMesaPOS');
+        const btnPOSText = document.getElementById('btnPOSText');
+        const formLiberar = document.getElementById('formLiberarMesa');
+
+        // Configurar URLs dinámicas
+        btnPOS.href = "{{ url_for('ventas.nueva') }}?mesa_id=" + id;
+        formLiberar.action = "/ventas/mesas/" + id + "/liberar";
+
+        if (estado === 'Ocupada') {
+            statusText.textContent = 'Mesa Ocupada 🔴';
+            statusText.style.color = 'var(--danger)';
+            icon.style.filter = 'drop-shadow(0 0 15px rgba(239,68,68,0.5))';
+            totalSection.style.display = 'block';
+            document.getElementById('modalMesaTotalVal').textContent = '$' + total.toLocaleString('es-CO');
+            document.getElementById('modalMesaItemsVal').textContent = cantItems + ' productos';
+            btnPOSText.textContent = 'Ver / Agregar Productos';
+            formLiberar.style.display = 'block';
+        } else {
+            statusText.textContent = 'Mesa Disponible 🟢';
+            statusText.style.color = 'var(--success)';
+            icon.style.filter = 'drop-shadow(0 0 15px rgba(16,185,129,0.5))';
+            totalSection.style.display = 'none';
+            btnPOSText.textContent = 'Abrir Nueva Comanda';
+            formLiberar.style.display = 'none';
+        }
+
+        actionModal.show();
+    }
+</script>
+{% endblock %}

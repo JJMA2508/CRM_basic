@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+{% block title %}Superadministrador{% endblock %}
+{% block page_title %}<i class="fas fa-crown me-2" style="color:var(--warning)"></i>SaaS Superadmin Panel{% endblock %}
+
+{% block content %}
+<div class="section-header mb-4">
+    <div>
+        <div class="section-title">Consola Global de Administración</div>
+        <div class="section-subtitle">Control total de comercios, inquilinos y facturación del SaaS</div>
+    </div>
+</div>
+
+<!-- Tarjetas de Métricas SaaS -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4 col-lg-2.4">
+        <div class="stat-card purple">
+            <div class="stat-icon purple"><i class="fas fa-building"></i></div>
+            <div class="stat-value">{{ stats.total_comercios }}</div>
+            <div class="stat-label">Comercios Totales</div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2.4">
+        <div class="stat-card blue">
+            <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+            <div class="stat-value">{{ stats.total_usuarios }}</div>
+            <div class="stat-label">Usuarios Activos</div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2.4">
+        <div class="stat-card green">
+            <div class="stat-icon green"><i class="fas fa-money-bill-trend-up"></i></div>
+            <div class="stat-value">{{ stats.total_ventas | formatear_moneda }}</div>
+            <div class="stat-label">Ventas Procesadas</div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2.4">
+        <div class="stat-card red">
+            <div class="stat-icon red"><i class="fas fa-truck-ramp-box"></i></div>
+            <div class="stat-value">{{ stats.total_compras | formatear_moneda }}</div>
+            <div class="stat-label">Compras Realizadas</div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2.4">
+        <div class="stat-card orange">
+            <div class="stat-icon orange"><i class="fas fa-wallet"></i></div>
+            <div class="stat-value">{{ stats.total_gastos | formatear_moneda }}</div>
+            <div class="stat-label">Gastos Operativos</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Tabla de Comercios -->
+    <div class="col-lg-8">
+        <div class="table-card h-100">
+            <div class="table-card-header">
+                <span class="table-card-title"><i class="fas fa-list me-2 text-primary"></i>Inquilinos Registrados</span>
+                <span style="font-size:0.8rem; color:var(--text-muted);">Comercios en la base de datos</span>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Negocio</th>
+                            <th>Contacto / Dueño</th>
+                            <th>API Key</th>
+                            <th>Fechas (Registro/Pago)</th>
+                            <th>Estado</th>
+                            <th>Métricas</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in comercios %}
+                        <tr>
+                            <td>#{{ c.id }}</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span style="font-size:1.3rem;">{{ c.logo_emoji or '🏪' }}</span>
+                                    <div>
+                                        <strong style="color:white; display:block;">{{ c.nombre }}</strong>
+                                        <span class="badge {% if c.tipo == 'heladeria' %}bg-info{% elif c.tipo == 'pizzeria' %}bg-danger{% elif c.tipo == 'ferreteria' %}bg-secondary{% else %}bg-success{% endif %}" style="font-size:0.65rem;">
+                                            {{ c.tipo | capitalize }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <strong style="color:white; display:block; font-size:0.85rem;">{{ c.admin_nombre or '—' }}</strong>
+                                <span style="font-size:0.75rem; color:var(--text-muted); display:block;"><i class="fas fa-envelope me-1"></i>{{ c.admin_email or '—' }}</span>
+                                <span style="font-size:0.75rem; color:var(--text-muted); display:block;"><i class="fas fa-phone me-1"></i>{{ c.telefono or '—' }}</span>
+                            </td>
+                            <td>
+                                <code style="color:var(--primary-light); font-size:0.8rem;">{{ c.api_key }}</code>
+                            </td>
+                            <td>
+                                <span style="font-size:0.75rem; color:var(--text-muted); display:block;">📝 Incorp: {{ c.fecha_registro[:10] if c.fecha_registro else '—' }}</span>
+                                <span style="font-size:0.75rem; color:#34D399; display:block;">💵 Pago: {{ c.fecha_ultimo_pago[:10] if c.fecha_ultimo_pago else '—' }}</span>
+                            </td>
+                            <td>
+                                {% if c.activo == 1 %}
+                                <span class="badge bg-success" style="font-size:0.75rem;"><i class="fas fa-circle-check me-1"></i>Activo</span>
+                                {% else %}
+                                <span class="badge bg-danger" style="font-size:0.75rem;"><i class="fas fa-ban me-1"></i>Suspendido</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="d-block" style="font-size:0.8rem;"><i class="fas fa-user-tag text-muted me-1"></i>{{ c.cant_usuarios }} usr</span>
+                                <span class="d-block" style="font-size:0.8rem;"><i class="fas fa-box text-muted me-1"></i>{{ c.cant_productos }} prod</span>
+                                <strong style="font-size:0.8rem; color:var(--success);"><i class="fas fa-cash-register me-1"></i>{{ c.total_ventas | formatear_moneda }}</strong>
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex justify-content-end gap-2">
+                                    <!-- Registrar Pago -->
+                                    <form method="POST" action="{{ url_for('superadmin.registrar_pago', cid=c.id) }}" onsubmit="return confirm('¿Registrar el pago de la mensualidad actual y activar este comercio?')" style="display:inline;">
+                                        <button type="submit" class="btn-action success" title="Registrar Pago" style="background:rgba(52,211,153,0.15); color:#34D399;">
+                                            <i class="fas fa-hand-holding-dollar"></i>
+                                        </button>
+                                    </form>
+                                    <!-- Suspender / Reactivar -->
+                                    <form method="POST" action="{{ url_for('superadmin.toggle_estado', cid=c.id) }}" style="display:inline;">
+                                        <button type="submit" class="btn-action {% if c.activo == 1 %}edit{% else %}success{% endif %}" title="{% if c.activo == 1 %}Suspender Comercio{% else %}Activar Comercio{% endif %}" style="{% if c.activo == 1 %}background:rgba(255,193,7,0.1); color:#ffc107;{% else %}background:rgba(40,167,69,0.1); color:#28a745;{% endif %}">
+                                            <i class="fas {% if c.activo == 1 %}fa-pause{% else %}fa-play{% endif %}"></i>
+                                        </button>
+                                    </form>
+                                    <!-- Cambiar Contraseña del Administrador -->
+                                    <button type="button" class="btn-action edit" title="Cambiar Contraseña" data-bs-toggle="modal" data-bs-target="#passwordModal{{ c.id }}" style="background:rgba(13,110,253,0.15); color:#3b82f6;">
+                                        <i class="fas fa-user-lock"></i>
+                                    </button>
+                                    <!-- Regenerar API Key -->
+                                    <form method="POST" action="{{ url_for('superadmin.regenerar_key', cid=c.id) }}" onsubmit="return confirm('¿Seguro que deseas cambiar la clave API de este comercio?')" style="display:inline;">
+                                        <button type="submit" class="btn-action edit" title="Regenerar API Key">
+                                            <i class="fas fa-key"></i>
+                                        </button>
+                                    </form>
+                                    <!-- Eliminar -->
+                                    <form method="POST" action="{{ url_for('superadmin.eliminar_comercio', cid=c.id) }}" onsubmit="return confirm('ATENCIÓN: Se eliminarán todos los productos, ventas y usuarios de {{ c.nombre }}. ¿Continuar?')" style="display:inline;">
+                                        <button type="submit" class="btn-action danger" title="Eliminar Comercio">
+                                            <i class="fas fa-trash-can"></i>
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Modal Cambiar Contraseña -->
+                                <div class="modal fade" id="passwordModal{{ c.id }}" tabindex="-1" aria-labelledby="passwordModalLabel{{ c.id }}" aria-hidden="true">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content" style="background:var(--bg-card); border:1px solid var(--border-color); color:white;">
+                                            <div class="modal-header" style="border-bottom:1px solid var(--border-color);">
+                                                <h5 class="modal-title" id="passwordModalLabel{{ c.id }}" style="font-weight:700; font-size:1.05rem;">
+                                                    <i class="fas fa-key text-warning me-2"></i>Cambiar Contraseña: {{ c.nombre }}
+                                                </h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <form method="POST" action="{{ url_for('superadmin.cambiar_password', cid=c.id) }}">
+                                                <div class="modal-body text-start">
+                                                    <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">
+                                                        Esto cambiará la contraseña de acceso del administrador principal (<strong>{{ c.admin_nombre }}</strong> / <code>{{ c.admin_email }}</code>).
+                                                    </p>
+                                                    <div class="mb-3">
+                                                        <label class="form-label" style="font-size:0.8rem; font-weight:600;">Nueva Contraseña *</label>
+                                                        <input type="password" name="nueva_password" class="form-control form-control-sm" placeholder="Mínimo 6 caracteres" required minlength="6" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer" style="border-top:1px solid var(--border-color);">
+                                                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                                                    <button type="submit" class="btn btn-warning btn-sm" style="font-weight:700; color:black;">Guardar Cambios</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Registrar Nuevo Comercio -->
+    <div class="col-lg-4">
+        <div class="card p-4 h-100" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius);">
+            <h5 class="mb-3" style="font-weight:700;"><i class="fas fa-plus me-2 text-warning"></i>Nuevo Inquilino</h5>
+            <p class="text-muted-custom mb-4" style="font-size:0.85rem;">Registra un nuevo comercio y su cuenta administradora de forma inmediata.</p>
+            
+            <form method="POST" action="{{ url_for('superadmin.nuevo_comercio') }}">
+                <div class="mb-3">
+                    <label class="form-label">Nombre del Comercio *</label>
+                    <input type="text" name="nombre" class="form-control form-control-sm" placeholder="Ej: Pizza Hut 🍕" required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Tipo de Negocio *</label>
+                    <input type="text" name="tipo" class="form-control form-control-sm" placeholder="Ej: Zapatería, Carnicería, Peluquería, Vendedor..." required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                     <input type="hidden" name="zona_horaria" id="zona_horaria" value="America/Bogota">
+
+                <div class="mb-3">
+                    <label class="form-label">País / Región *</label>
+                    <select id="pais" name="pais" class="form-select form-select-sm" required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                        <option value="CO">Colombia (UTC-5)</option>
+                        <option value="MX">México (UTC-6)</option>
+                        <option value="PE">Perú (UTC-5)</option>
+                        <option value="ES">España (UTC+1)</option>
+                        <option value="VE">Venezuela (UTC-4)</option>
+                        <option value="AR">Argentina (UTC-3)</option>
+                        <option value="EC">Ecuador (UTC-5)</option>
+                        <option value="CL">Chile (UTC-4)</option>
+                        <option value="BO">Bolivia (UTC-4)</option>
+                        <option value="CR">Costa Rica (UTC-6)</option>
+                        <option value="CU">Cuba (UTC-5)</option>
+                        <option value="DO">República Dominicana (UTC-4)</option>
+                        <option value="SV">El Salvador (UTC-6)</option>
+                        <option value="GT">Guatemala (UTC-6)</option>
+                        <option value="HN">Honduras (UTC-6)</option>
+                        <option value="NI">Nicaragua (UTC-6)</option>
+                        <option value="PA">Panamá (UTC-5)</option>
+                        <option value="PY">Paraguay (UTC-4)</option>
+                        <option value="UY">Uruguay (UTC-3)</option>
+                        <option value="PR">Puerto Rico (UTC-4)</option>
+                        <option value="US">Estados Unidos (UTC-5)</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Teléfono de Contacto *</label>
+                    <div class="d-flex gap-2">
+                        <select id="telefono_codigo" name="telefono_codigo" class="form-select form-select-sm" required style="width: 100px; background:var(--bg-input); border-color:var(--border-color); color:white; padding-right: 0px;">
+                            <option value="+57">+57 (CO)</option>
+                            <option value="+52">+52 (MX)</option>
+                            <option value="+51">+51 (PE)</option>
+                            <option value="+34">+34 (ES)</option>
+                            <option value="+58">+58 (VE)</option>
+                            <option value="+54">+54 (AR)</option>
+                            <option value="+593">+593 (EC)</option>
+                            <option value="+56">+56 (CL)</option>
+                            <option value="+591">+591 (BO)</option>
+                            <option value="+506">+506 (CR)</option>
+                            <option value="+53">+53 (CU)</option>
+                            <option value="+1-809">+1 (DO)</option>
+                            <option value="+503">+503 (SV)</option>
+                            <option value="+502">+502 (GT)</option>
+                            <option value="+504">+504 (HN)</option>
+                            <option value="+505">+505 (NI)</option>
+                            <option value="+507">+507 (PA)</option>
+                            <option value="+595">+595 (PY)</option>
+                            <option value="+598">+598 (UY)</option>
+                            <option value="+1-787">+1 (PR)</option>
+                            <option value="+1">+1 (US)</option>
+                        </select>
+                        <input type="tel" name="telefono_numero" class="form-control form-control-sm" placeholder="3001234567" required style="flex:1; background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                </div>
+                
+                <hr style="border-color:var(--border-color);" class="my-3">
+                <h6 class="text-secondary mb-3" style="font-size:0.85rem; font-weight:700;">Datos del Dueño (Administrador)</h6>
+                
+                <div class="mb-3">
+                    <label class="form-label">Nombre Completo *</label>
+                    <input type="text" name="owner_nombre" class="form-control form-control-sm" placeholder="Ej: Carlos Gómez" required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Correo Electrónico *</label>
+                    <input type="email" name="owner_email" class="form-control form-control-sm" placeholder="carlos@pizza.com" required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="form-label">Contraseña Inicial *</label>
+                    <input type="password" name="owner_password" class="form-control form-control-sm" required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                </div>
+                
+                <button type="submit" class="btn btn-warning w-100 py-2.5" style="font-weight:700; color:black;">
+                    <i class="fas fa-circle-check me-2"></i>Crear Comercio
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (tz) {
+            document.getElementById('zona_horaria').value = tz;
+            
+            const tzMapping = {
+                'America/Bogota': { country: 'CO', code: '+57' },
+                'America/Mexico_City': { country: 'MX', code: '+52' },
+                'America/Chihuahua': { country: 'MX', code: '+52' },
+                'America/Monterrey': { country: 'MX', code: '+52' },
+                'America/Merida': { country: 'MX', code: '+52' },
+                'America/Lima': { country: 'PE', code: '+51' },
+                'Europe/Madrid': { country: 'ES', code: '+34' },
+                'Europe/Lisbon': { country: 'ES', code: '+34' },
+                'America/Caracas': { country: 'VE', code: '+58' },
+                'America/Buenos_Aires': { country: 'AR', code: '+54' },
+                'America/Argentina/Cordoba': { country: 'AR', code: '+54' },
+                'America/Guayaquil': { country: 'EC', code: '+593' },
+                'America/Santiago': { country: 'CL', code: '+56' },
+                'America/La_Paz': { country: 'BO', code: '+591' },
+                'America/Costa_Rica': { country: 'CR', code: '+506' },
+                'America/Havana': { country: 'CU', code: '+53' },
+                'America/Santo_Domingo': { country: 'DO', code: '+1-809' },
+                'America/El_Salvador': { country: 'SV', code: '+503' },
+                'America/Guatemala': { country: 'GT', code: '+502' },
+                'America/Tegucigalpa': { country: 'HN', code: '+504' },
+                'America/Managua': { country: 'NI', code: '+505' },
+                'America/Panama': { country: 'PA', code: '+507' },
+                'America/Asuncion': { country: 'PY', code: '+595' },
+                'America/Montevideo': { country: 'UY', code: '+598' },
+                'America/Puerto_Rico': { country: 'PR', code: '+1-787' },
+                'America/New_York': { country: 'US', code: '+1' },
+                'America/Chicago': { country: 'US', code: '+1' },
+                'America/Denver': { country: 'US', code: '+1' },
+                'America/Los_Angeles': { country: 'US', code: '+1' }
+            };
+
+            const match = tzMapping[tz];
+            if (match) {
+                const selectPais = document.getElementById('pais');
+                if (selectPais) selectPais.value = match.country;
+
+                const selectCodigo = document.getElementById('telefono_codigo');
+                if (selectCodigo) selectCodigo.value = match.code;
+            }
+        }
+
+        const countryToPhone = {
+            'CO': '+57', 'MX': '+52', 'PE': '+51', 'ES': '+34', 'VE': '+58',
+            'AR': '+54', 'EC': '+593', 'CL': '+56', 'BO': '+591', 'CR': '+506',
+            'CU': '+53', 'DO': '+1-809', 'SV': '+503', 'GT': '+502', 'HN': '+504',
+            'NI': '+505', 'PA': '+507', 'PY': '+595', 'UY': '+598', 'PR': '+1-787', 'US': '+1'
+        };
+
+        const selectPais = document.getElementById('pais');
+        const selectCodigo = document.getElementById('telefono_codigo');
+        if (selectPais && selectCodigo) {
+            selectPais.addEventListener('change', function() {
+                const code = countryToPhone[this.value];
+                if (code) {
+                    selectCodigo.value = code;
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

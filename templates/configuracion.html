@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Configuración{% endblock %}
+{% block page_title %}<i class="fas fa-cog me-2" style="color:var(--primary-light)"></i>Configuración{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Configuración del Local -->
+    <div class="col-lg-8">
+        <div class="card p-4" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius);">
+            <div class="mb-4">
+                <h5 class="mb-1" style="font-weight:700;">Datos del Negocio</h5>
+                <p class="text-muted-custom mb-0" style="font-size:0.85rem;">Personaliza la información que se mostrará en los recibos, reportes y barra lateral.</p>
+            </div>
+
+            <form method="POST" action="{{ url_for('config.index') }}">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Nombre del Local *</label>
+                        <input type="text" name="nombre" class="form-control" value="{{ comercio.nombre }}" required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">NIT / RUT</label>
+                        <input type="text" name="nit_rut" class="form-control" value="{{ comercio.nit_rut or '' }}" placeholder="Ej: 900.123.456-7" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Dirección Física</label>
+                        <input type="text" name="direccion" class="form-control" value="{{ comercio.direccion or '' }}" placeholder="Ej: Calle 50 #12-34" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Teléfono de Contacto</label>
+                        <input type="text" name="telefono" class="form-control" value="{{ comercio.telefono or '' }}" placeholder="Ej: 300 123 4567" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Emoji Logo (Fallback)</label>
+                        <select name="logo_emoji" class="form-select" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                            <option value="🍦" {% if comercio.logo_emoji == '🍦' %}selected{% endif %}>🍦 Helado / Postres</option>
+                            <option value="🍕" {% if comercio.logo_emoji == '🍕' %}selected{% endif %}>🍕 Pizzería / Comida</option>
+                            <option value="🛠️" {% if comercio.logo_emoji == '🛠️' %}selected{% endif %}>🛠️ Ferretería / Herramientas</option>
+                            <option value="🏪" {% if comercio.logo_emoji == '🏪' %}selected{% endif %}>🏪 Minimercado / Tienda</option>
+                            <option value="🍔" {% if comercio.logo_emoji == '🍔' %}selected{% endif %}>🍔 Hamburguesería</option>
+                            <option value="☕" {% if comercio.logo_emoji == '☕' %}selected{% endif %}>☕ Cafetería</option>
+                            <option value="🥖" {% if comercio.logo_emoji == '🥖' %}selected{% endif %}>🥖 Panadería</option>
+                            <option value="📦" {% if comercio.logo_emoji == '📦' %}selected{% endif %}>📦 Almacén / Distribuidora</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">URL / Ruta de Imagen Logo</label>
+                        <input type="text" name="logo_url" class="form-control" value="{{ comercio.logo_url or '' }}" placeholder="Ej: https://web.com/logo.png o /static/logo.png" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Símbolo de Moneda</label>
+                        <select name="moneda_simbolo" class="form-select" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                            <option value="$" {% if comercio.moneda_simbolo == '$' %}selected{% endif %}>$ - Pesos / Dólar</option>
+                            <option value="€" {% if comercio.moneda_simbolo == '€' %}selected{% endif %}>€ - Euros</option>
+                            <option value="US$" {% if comercio.moneda_simbolo == 'US$' %}selected{% endif %}>US$ - Dólar Estadounidense</option>
+                            <option value="COP" {% if comercio.moneda_simbolo == 'COP' %}selected{% endif %}>COP - Pesos Colombianos</option>
+                            <option value="S/." {% if comercio.moneda_simbolo == 'S/.' %}selected{% endif %}>S/. - Soles Peruanos</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-12 mt-3">
+                        <div class="form-check form-switch p-3 rounded" style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); display: flex; align-items: center; gap: 8px;">
+                            <input class="form-check-input" type="checkbox" id="control_mesas" name="control_mesas" value="1" {% if comercio.control_mesas == 1 %}checked{% endif %} style="cursor:pointer;">
+                            <label class="form-check-label" for="control_mesas" style="color:white; cursor:pointer; font-weight:600;">
+                                <i class="fas fa-utensils text-warning me-1"></i> Habilitar Módulo de Mesas y Comandas
+                            </label>
+                        </div>
+                        <div class="text-muted-custom" style="font-size:0.75rem; margin-top: 6px; padding-left: 45px;">
+                            Activa esta opción si tu negocio es un restaurante, café o bar y necesitas gestionar pedidos asignados a mesas y comandas a cocina.
+                        </div>
+                    </div>
+                    
+                    <input type="hidden" name="moneda_formato" value="es-CO">
+                </div>
+
+                <div class="mt-4 pt-3 d-flex justify-content-end" style="border-top:1px solid var(--border-color);">
+                    <button type="submit" class="btn-primary-custom" style="padding: 10px 24px;">
+                        <i class="fas fa-floppy-disk me-2"></i>Guardar Ajustes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- API Key & Integraciones -->
+    <div class="col-lg-4">
+        <div class="card p-4 h-100" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius);">
+            <div class="mb-4">
+                <h5 class="mb-1" style="font-weight:700;">Integración de Datos</h5>
+                <p class="text-muted-custom mb-0" style="font-size:0.85rem;">Utiliza tu API Key personal para vincular el sistema con n8n u otros servicios externos.</p>
+            </div>
+
+            <div class="p-3 rounded mb-3" style="background:rgba(0,0,0,0.25); border:1px solid var(--border-color);">
+                <label class="form-label" style="font-size:0.75rem; font-weight:600; color:var(--text-secondary);">CLAVE API PRIVADA</label>
+                <div class="input-group">
+                    <input type="text" id="apiKeyField" class="form-control form-control-sm" value="{{ comercio.api_key }}" readonly 
+                           style="background:transparent; border:none; color:var(--primary-light); font-family:monospace; font-size:0.85rem;">
+                    <button class="btn btn-sm btn-dark" type="button" onclick="copyApiKey()" style="border:none;">
+                        <i class="fas fa-copy"></i> Copiar
+                    </button>
+                </div>
+            </div>
+
+            <div style="font-size:0.8rem; color:var(--text-secondary);">
+                <div class="mb-2"><i class="fas fa-circle-check text-success me-1"></i> Aislamiento completo de inquilino.</div>
+                <div><i class="fas fa-circle-check text-success me-1"></i> Formato de header: <code style="color:var(--primary-light);">X-API-Key</code>.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gestión de Mesas (Sólo Pizzería) -->
+{% if session.get('comercio_tipo') == 'pizzeria' %}
+<div class="row g-4 mt-2">
+    <div class="col-lg-8">
+        <div class="card p-4" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius);">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h5 class="mb-1" style="font-weight:700;">Salón y Mesas</h5>
+                    <p class="text-muted-custom mb-0" style="font-size:0.85rem;">Agrega o elimina mesas de tu salón para el control de comandas.</p>
+                </div>
+                <span class="badge bg-secondary">{{ mesas | length }} mesas activas</span>
+            </div>
+
+            <!-- Formulario agregar mesa -->
+            <form method="POST" action="{{ url_for('config.agregar_mesa') }}" class="row g-2 align-items-end mb-4 p-3 rounded" style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color);">
+                <div class="col-md-8">
+                    <label class="form-label" style="font-size:0.8rem; font-weight:600;">Nombre o Número de Mesa *</label>
+                    <input type="text" name="numero" class="form-control form-control-sm" placeholder="Ej: Mesa 5, VIP 1, Barra 2" required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-sm btn-warning w-100 py-2" style="font-weight:700; color:black;">
+                        <i class="fas fa-plus me-1"></i>Agregar Mesa
+                    </button>
+                </div>
+            </form>
+
+            <!-- Lista de mesas -->
+            <div class="table-responsive">
+                <table class="table mb-0" style="font-size:0.9rem;">
+                    <thead>
+                        <tr>
+                            <th>Identificador</th>
+                            <th>Estado Actual</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in mesas %}
+                        <tr>
+                            <td><strong>{{ m.numero }}</strong></td>
+                            <td>
+                                {% if m.estado == 'Ocupada' %}
+                                <span class="badge bg-danger">Ocupada</span>
+                                {% else %}
+                                <span class="badge bg-success">Libre</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <form method="POST" action="{{ url_for('config.eliminar_mesa', mid=m.id) }}" onsubmit="return confirm('¿Seguro que deseas eliminar la mesa {{ m.numero }}?')" style="display:inline;">
+                                    <button type="submit" class="btn-action danger" title="Eliminar Mesa">
+                                        <i class="fas fa-trash-can"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center py-4 text-muted-custom">No hay mesas registradas.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function copyApiKey() {
+    const copyText = document.getElementById("apiKeyField");
+    copyText.select();
+    copyText.setSelectionRange(0, 99999); /* For mobile devices */
+    navigator.clipboard.writeText(copyText.value);
+    
+    // Alerta visual efímera
+    alert("🔑 ¡Clave API copiada al portapapeles!");
+}
+</script>
+{% endblock %}

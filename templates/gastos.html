@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Gastos Operativos{% endblock %}
+{% block page_title %}<i class="fas fa-wallet me-2" style="color:var(--primary-light)"></i>Gastos Operativos{% endblock %}
+
+{% block content %}
+<div class="section-header mb-4">
+    <div>
+        <div class="section-title">Egresos y Caja Chica</div>
+        <div class="section-subtitle">Registra y clasifica las salidas de dinero de tu negocio</div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Formulario de Registro -->
+    <div class="col-lg-4">
+        <div class="card p-4" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius);">
+            {% if not caja_abierta %}
+            <div class="alert alert-warning mb-3" style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.25); color:#f59e0b; font-size:0.78rem; border-radius:8px;">
+                <i class="fas fa-triangle-exclamation me-1"></i>
+                <strong>Caja Cerrada:</strong> Este gasto se registrará en el historial general, pero no restará saldo de ningún arqueo porque no hay un turno abierto.
+            </div>
+            {% endif %}
+            
+            <form method="POST" action="{{ url_for('caja.gastos') }}">
+                <div class="mb-3">
+                    <label class="form-label">Categoría del Gasto *</label>
+                    <select name="categoria" class="form-select" required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                        <option value="">-- Seleccionar Categoría --</option>
+                        <option value="Servicios Públicos">💧 Servicios Públicos</option>
+                        <option value="Alquiler">🏢 Alquiler</option>
+                        <option value="Insumos / Mercancía">📦 Insumos / Mercancía</option>
+                        <option value="Nómina / Salarios">👤 Nómina / Salarios</option>
+                        <option value="Publicidad">📣 Publicidad</option>
+                        <option value="Mantenimiento">🔧 Mantenimiento</option>
+                        <option value="Otros">🍽️ Otros</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Monto del Egrese (COP) *</label>
+                    <input type="number" name="monto" class="form-control" placeholder="15000" min="1" required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Detalles / Descripción</label>
+                    <textarea name="descripcion" class="form-control" rows="3" placeholder="Ej: Pago de luz eléctrica del mes" style="background:var(--bg-input); border-color:var(--border-color); color:white; resize:none;"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-danger w-100 py-2.5" style="font-weight:700;">
+                    <i class="fas fa-circle-check me-2"></i>Registrar Egresos
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla Historial -->
+    <div class="col-lg-8">
+        <div class="table-card h-100">
+            <div class="table-card-header">
+                <span class="table-card-title"><i class="fas fa-clock-rotate-left me-2"></i>Historial de Gastos</span>
+                <span style="font-size:0.8rem; color:var(--text-muted);">Últimos 100 egresos</span>
+            </div>
+            
+            <div class="table-responsive" style="max-height: 480px;">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Categoría</th>
+                            <th>Monto</th>
+                            <th>Descripción</th>
+                            <th>Registrado Por</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for g in gastos %}
+                        <tr>
+                            <td style="font-size:0.82rem;">{{ g.fecha[:16] if g.fecha else '—' }}</td>
+                            <td>
+                                <span class="badge bg-secondary" style="font-size:0.8rem;">
+                                    {{ g.categoria }}
+                                </span>
+                            </td>
+                            <td><strong style="color:var(--danger)">{{ g.monto | formatear_moneda }}</strong></td>
+                            <td style="font-size:0.85rem; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ g.descripcion or '' }}">
+                                {{ g.descripcion or '—' }}
+                            </td>
+                            <td style="font-size:0.82rem;">{{ g.usuario_nombre }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5" style="color:var(--text-muted)">
+                                <i class="fas fa-wallet fa-2x mb-2 d-block" style="opacity:0.2"></i>
+                                No hay egresos registrados.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

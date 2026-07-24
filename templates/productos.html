@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+{% block title %}Inventario y Catálogo{% endblock %}
+{% block page_title %}
+    <i class="fas fa-boxes-stacked me-2" style="color:var(--primary-light)"></i>Inventario / Catálogo
+{% endblock %}
+
+{% block content %}
+<div class="section-header mb-4">
+    <div>
+        <div class="section-title">
+            Gestión del Catálogo & Existencias
+        </div>
+        <div class="section-subtitle">
+            Administra los artículos, servicios, costos y stock de tu negocio.
+        </div>
+    </div>
+    {% if session.get('rol') == 'admin' %}
+    <button class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#modalNuevo" id="btn-nuevo-producto">
+        <i class="fas fa-plus me-2"></i>Nuevo Artículo
+    </button>
+    {% endif %}
+</div>
+
+<!-- Tabla de productos -->
+<div class="table-card">
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Nombre</th>
+                    <th>SKU / Código</th>
+                    <th>Marca</th>
+                    <th>Categoría / Variante</th>
+                    <th>Costo</th>
+                    <th>Precio</th>
+                    <th class="text-center">Stock</th>
+                    <th class="text-center">U. Medida</th>
+                    <th>Estado</th>
+                    {% if session.get('rol') == 'admin' %}
+                    <th class="text-end">Acciones</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in productos %}
+                <tr style="{{ 'opacity:0.45' if not p.activo else '' }}">
+                    <td><span class="text-muted-custom">{{ p.id }}</span></td>
+                    <td>
+                        <span class="me-1">
+                            {% if p.categoria in emoji_cat %}{{ emoji_cat[p.categoria] }}{% else %}📦{% endif %}
+                        </span>
+                        <strong style="color:white;">{{ p.nombre }}</strong>
+                    </td>
+                    <td><span class="text-muted-custom">{{ p.sku or '—' }}</span></td>
+                    <td>{{ p.marca or '—' }}</td>
+                    <td>
+                        <span class="badge bg-secondary" style="font-size:0.7rem; font-weight:600;">
+                            {{ p.categoria }}
+                        </span>
+                        {% if p.variante %}
+                        <span class="text-muted-custom ms-1" style="font-size:0.8rem;">({{ p.variante }})</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ p.costo | formatear_moneda }}</td>
+                    <td><strong style="color:var(--primary-light)">{{ p.precio | formatear_moneda }}</strong></td>
+                    
+                    <td class="text-center">
+                        {% if p.stock is not none %}
+                            <span class="stock-badge {% if p.stock <= 0 %}empty{% elif p.stock <= p.stock_minimo %}low{% else %}ok{% endif %}">
+                                {{ p.stock | int }}
+                            </span>
+                            {% if p.stock <= p.stock_minimo %}
+                            <i class="fas fa-triangle-exclamation text-warning ms-1" title="Bajo stock mínimo ({{ p.stock_minimo | int }})"></i>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge bg-secondary" style="font-size:0.75rem;"><i class="fas fa-infinity me-1"></i> Ilimitado</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">{{ p.unidad_medida or '—' }}</td>
+                    
+                    <td>
+                        {% if p.activo %}
+                        <span class="badge-payment badge-efectivo"><i class="fas fa-circle me-1" style="font-size:0.5rem"></i>Activo</span>
+                        {% else %}
+                        <span class="badge-payment" style="background:rgba(100,116,139,0.15);color:#94A3B8">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    {% if session.get('rol') == 'admin' %}
+                    <td class="text-end">
+                        <div class="d-flex justify-content-end gap-2">
+                            <!-- Botón para ajustar stock (Solo si controla stock) -->
+                            {% if p.stock is not none %}
+                            <button class="btn-action edit" style="background:rgba(245,158,11,0.15); color:#f59e0b;"
+                                    onclick="openAjustarStock({{ p.id }}, '{{ p.nombre }}', {{ p.stock | int }})"
+                                    title="Ajustar Stock">
+                                <i class="fas fa-boxes-stacked"></i>
+                            </button>
+                            {% endif %}
+
+                            <!-- Editar -->
+                            <button class="btn-action edit"
+                                    onclick="openEdit({{ p.id }}, '{{ p.nombre }}', '{{ p.categoria }}', '{{ p.variante or '' }}', {{ p.precio | int }}, {{ p.costo or 0 }}, '{{ p.sku or '' }}', '{{ p.marca or '' }}', '{{ p.unidad_medida or 'Unidad' }}', '{{ p.stock_minimo if p.stock_minimo is not none else '' }}', {% if p.stock is not none %}true{% else %}false{% endif %})"
+                                    title="Editar" id="btn-edit-{{ p.id }}">
+                                <i class="fas fa-pen"></i>
+                            </button>
+
+                            <!-- Toggle Activo -->
+                            <form method="POST" action="{{ url_for('productos.toggle', pid=p.id) }}" style="display:inline">
+                                <button type="submit" class="btn-action {{ 'danger' if p.activo else 'success' }}"
+                                        title="{{ 'Desactivar' if p.activo else 'Activar' }}"
+                                        id="btn-toggle-{{ p.id }}">
+                                    <i class="fas {{ 'fa-eye-slash' if p.activo else 'fa-eye' }}"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="11" class="text-center py-5" style="color:var(--text-muted)">
+                        <i class="fas fa-boxes-stacked d-block mb-2" style="font-size:2rem; opacity:0.3;"></i>
+                        No hay productos o artículos registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if session.get('rol') == 'admin' %}
+<!-- ── Modal Nuevo Producto ── -->
+<div class="modal fade" id="modalNuevo" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="background:var(--bg-sidebar);border:1px solid var(--border-color);color:white;">
+            <div class="modal-header" style="border-color:var(--border-color)">
+                <h5 class="modal-title" style="color:white">
+                    <i class="fas fa-plus me-2" style="color:var(--primary-light)"></i>Agregar Nuevo Artículo / Servicio
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('productos.nuevo') }}">
+                <div class="modal-body row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Nombre del Producto / Servicio *</label>
+                        <input type="text" name="nombre" class="form-control" placeholder="Ej: Martillo o Pizza Margarita" required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Categoría *</label>
+                        <select name="categoria" class="form-select" required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                            <option value="">Seleccionar...</option>
+                            <optgroup label="Gastronomía & Heladería" style="background:var(--bg-sidebar);">
+                                <option value="Helados">🍦 Helados</option>
+                                <option value="Fresas">🍓 Fresas</option>
+                                <option value="Solteritas">🍬 Solteritas</option>
+                                <option value="Pizzas">🍕 Pizzas</option>
+                                <option value="Entradas">🍝 Entradas</option>
+                                <option value="Bebidas">🥤 Bebidas</option>
+                                <option value="Cafetería">☕ Cafetería</option>
+                            </optgroup>
+                            <optgroup label="Ferretería & Construcción" style="background:var(--bg-sidebar);">
+                                <option value="Herramientas">🛠️ Herramientas</option>
+                                <option value="Fijaciones">🔩 Fijaciones</option>
+                                <option value="Eléctricos">⚡ Eléctricos</option>
+                                <option value="Herramientas Eléctricas">🔌 Herramientas Eléctricas</option>
+                            </optgroup>
+                            <optgroup label="Retail & General" style="background:var(--bg-sidebar);">
+                                <option value="Granos">🌾 Granos</option>
+                                <option value="Aceites">🧴 Aceites</option>
+                                <option value="Lácteos">🥛 Lácteos</option>
+                                <option value="Ropa & Calzado">👟 Ropa & Calzado</option>
+                                <option value="Servicios">💼 Servicios / Mano de obra</option>
+                            </optgroup>
+                            <option value="Otros">🍽️ Otros</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Precio de Venta *</label>
+                        <input type="number" name="precio" class="form-control" placeholder="18000" min="0" required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Variante / Tamaño <small class="text-muted-custom">(opcional)</small></label>
+                        <input type="text" name="variante" class="form-control" placeholder="Ej: Cono, Familiar, Mediana" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+
+                    <!-- Switch Control de Inventario -->
+                    <div class="col-md-12 my-2">
+                        <div class="form-check form-switch p-3 rounded" style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); display: flex; align-items: center; gap: 8px;">
+                            <input class="form-check-input ms-0 me-2" type="checkbox" id="control_stock_nuevo" name="control_stock" value="1" checked onchange="toggleStockFields('nuevo')" style="cursor:pointer;">
+                            <label class="form-check-label" for="control_stock_nuevo" style="color:white; cursor:pointer; font-weight:600;">
+                                <i class="fas fa-boxes-stacked text-warning me-1"></i> Controlar Inventario / Stock para este artículo
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Campos de Inventario (Opcionales por switch) -->
+                    <div class="col-md-6 stock-field-group-nuevo">
+                        <label class="form-label">Costo de Compra (Costo de adquisición)</label>
+                        <input type="number" name="costo" class="form-control" placeholder="11000" min="0" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    <div class="col-md-6 stock-field-group-nuevo">
+                        <label class="form-label">Código SKU / Código de Barras</label>
+                        <input type="text" name="sku" class="form-control" placeholder="Ej: BARCODE-123" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    <div class="col-md-6 stock-field-group-nuevo">
+                        <label class="form-label">Marca</label>
+                        <input type="text" name="marca" class="form-control" placeholder="Ej: Stanley" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    <div class="col-md-3 stock-field-group-nuevo">
+                        <label class="form-label">Stock Inicial</label>
+                        <input type="number" name="stock" class="form-control" placeholder="10" min="0" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    <div class="col-md-3 stock-field-group-nuevo">
+                        <label class="form-label">Stock Mínimo Alerta</label>
+                        <input type="number" name="stock_minimo" class="form-control" placeholder="2" min="0" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    <div class="col-md-6 stock-field-group-nuevo">
+                        <label class="form-label">Unidad de Medida</label>
+                        <select name="unidad_medida" class="form-select" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                            <option value="Unidad">Unidad</option>
+                            <option value="Libra">Libra</option>
+                            <option value="Kilo">Kilo</option>
+                            <option value="Metro">Metro</option>
+                            <option value="Caja">Caja</option>
+                            <option value="Rollo">Rollo</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-color:var(--border-color)">
+                    <button type="button" class="btn text-muted-custom" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning" style="font-weight:700; color:black;">
+                        <i class="fas fa-floppy-disk me-2"></i>Guardar Producto
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal Editar Producto ── -->
+<div class="modal fade" id="modalEditar" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="background:var(--bg-sidebar);border:1px solid var(--border-color);color:white;">
+            <div class="modal-header" style="border-color:var(--border-color)">
+                <h5 class="modal-title" style="color:white">
+                    <i class="fas fa-pen me-2" style="color:var(--secondary)"></i>Editar Artículo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="editForm">
+                <div class="modal-body row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Nombre del Producto / Servicio *</label>
+                        <input type="text" name="nombre" id="editNombre" class="form-control" required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Categoría *</label>
+                        <select name="categoria" id="editCategoria" class="form-select" required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                            <option value="">Seleccionar...</option>
+                            <optgroup label="Gastronomía & Heladería" style="background:var(--bg-sidebar);">
+                                <option value="Helados">🍦 Helados</option>
+                                <option value="Fresas">🍓 Fresas</option>
+                                <option value="Solteritas">🍬 Solteritas</option>
+                                <option value="Pizzas">🍕 Pizzas</option>
+                                <option value="Entradas">🍝 Entradas</option>
+                                <option value="Bebidas">🥤 Bebidas</option>
+                                <option value="Cafetería">☕ Cafetería</option>
+                            </optgroup>
+                            <optgroup label="Ferretería & Construcción" style="background:var(--bg-sidebar);">
+                                <option value="Herramientas">🛠️ Herramientas</option>
+                                <option value="Fijaciones">🔩 Fijaciones</option>
+                                <option value="Eléctricos">⚡ Eléctricos</option>
+                                <option value="Herramientas Eléctricas">🔌 Herramientas Eléctricas</option>
+                            </optgroup>
+                            <optgroup label="Retail & General" style="background:var(--bg-sidebar);">
+                                <option value="Granos">🌾 Granos</option>
+                                <option value="Aceites">🧴 Aceites</option>
+                                <option value="Lácteos">🥛 Lácteos</option>
+                                <option value="Ropa & Calzado">👟 Ropa & Calzado</option>
+                                <option value="Servicios">💼 Servicios / Mano de obra</option>
+                            </optgroup>
+                            <option value="Otros">🍽️ Otros</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Precio de Venta *</label>
+                        <input type="number" name="precio" id="editPrecio" class="form-control" min="0" required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Variante / Tamaño <small class="text-muted-custom">(opcional)</small></label>
+                        <input type="text" name="variante" id="editVariante" class="form-control" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+
+                    <!-- Switch Control de Inventario Editar -->
+                    <div class="col-md-12 my-2">
+                        <div class="form-check form-switch p-3 rounded" style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); display: flex; align-items: center; gap: 8px;">
+                            <input class="form-check-input ms-0 me-2" type="checkbox" id="control_stock_editar" name="control_stock" value="1" onchange="toggleStockFields('editar')" style="cursor:pointer;">
+                            <label class="form-check-label" for="control_stock_editar" style="color:white; cursor:pointer; font-weight:600;">
+                                <i class="fas fa-boxes-stacked text-warning me-1"></i> Controlar Inventario / Stock para este artículo
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Campos de Inventario Editar -->
+                    <div class="col-md-6 stock-field-group-editar">
+                        <label class="form-label">Costo de Compra (Costo de adquisición)</label>
+                        <input type="number" name="costo" id="editCosto" class="form-control" min="0" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    <div class="col-md-6 stock-field-group-editar">
+                        <label class="form-label">Código SKU / Código de Barras</label>
+                        <input type="text" name="sku" id="editSku" class="form-control" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    <div class="col-md-6 stock-field-group-editar">
+                        <label class="form-label">Marca</label>
+                        <input type="text" name="marca" id="editMarca" class="form-control" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    <div class="col-md-6 stock-field-group-editar">
+                        <label class="form-label">Stock Mínimo Alerta</label>
+                        <input type="number" name="stock_minimo" id="editStockMin" class="form-control" min="0" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                    <div class="col-md-6 stock-field-group-editar">
+                        <label class="form-label">Unidad de Medida</label>
+                        <select name="unidad_medida" id="editUnidad" class="form-select" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                            <option value="Unidad">Unidad</option>
+                            <option value="Libra">Libra</option>
+                            <option value="Kilo">Kilo</option>
+                            <option value="Metro">Metro</option>
+                            <option value="Caja">Caja</option>
+                            <option value="Rollo">Rollo</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-color:var(--border-color)">
+                    <button type="button" class="btn text-muted-custom" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning" style="font-weight:700; color:black;">
+                        <i class="fas fa-floppy-disk me-2"></i>Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal Ajustar Stock ── -->
+<div class="modal fade" id="modalStock" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:400px;">
+        <div class="modal-content" style="background:var(--bg-sidebar);border:1px solid var(--border-color);color:white;">
+            <div class="modal-header" style="border-color:var(--border-color)">
+                <h5 class="modal-title" style="color:white">
+                    <i class="fas fa-boxes-stacked me-2 text-warning"></i>Ajustar Stock
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="stockForm">
+                <div class="modal-body text-center py-3">
+                    <h5 class="mb-1" id="stockProdName" style="color:white;">Producto</h5>
+                    <p class="text-muted-custom mb-3" style="font-size:0.85rem;">Stock actual: <span id="stockCurrentVal" class="badge bg-secondary">0</span></p>
+                    
+                    <div class="mb-3 text-start">
+                        <label class="form-label">Tipo de Movimiento</label>
+                        <select name="tipo_movimiento" class="form-select" required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                            <option value="entrada">➕ Entrada (Compra, Devolución, Ajuste)</option>
+                            <option value="salida">➖ Salida (Pérdida, Desecho, Ajuste)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3 text-start">
+                        <label class="form-label">Cantidad</label>
+                        <input type="number" name="cantidad" class="form-control" min="0.01" step="any" placeholder="10" required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+
+                    <div class="mb-3 text-start">
+                        <label class="form-label">Motivo</label>
+                        <input type="text" name="motivo" class="form-control" placeholder="Ej. Compra a distribuidor, Pérdida" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-color:var(--border-color)">
+                    <button type="button" class="btn text-muted-custom" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning" style="font-weight:700;color:black;">
+                        Registrar Movimiento
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function toggleStockFields(prefix) {
+    const isChecked = document.getElementById('control_stock_' + prefix).checked;
+    const fields = document.querySelectorAll('.stock-field-group-' + prefix);
+    fields.forEach(el => {
+        if (isChecked) {
+            el.style.display = 'block';
+            el.querySelectorAll('input, select').forEach(i => i.disabled = false);
+        } else {
+            el.style.display = 'none';
+            el.querySelectorAll('input, select').forEach(i => i.disabled = true);
+        }
+    });
+}
+
+function openEdit(id, nombre, categoria, variante, precio, costo, sku, marca, unidad, stockMin, hasStock) {
+    document.getElementById('editNombre').value = nombre;
+    document.getElementById('editCategoria').value = categoria;
+    document.getElementById('editVariante').value = variante;
+    document.getElementById('editCosto').value = costo;
+    document.getElementById('editSku').value = sku;
+    document.getElementById('editMarca').value = marca;
+    document.getElementById('editUnidad').value = unidad;
+    document.getElementById('editStockMin').value = stockMin;
+    document.getElementById('editPrecio').value = precio;
+    
+    // Configurar el checkbox
+    const checkStock = document.getElementById('control_stock_editar');
+    checkStock.checked = (hasStock === true || hasStock === 'true');
+    toggleStockFields('editar');
+
+    document.getElementById('editForm').action = '/productos/' + id + '/editar';
+    new bootstrap.Modal(document.getElementById('modalEditar')).show();
+}
+
+function openAjustarStock(id, nombre, stock) {
+    document.getElementById('stockProdName').textContent = nombre;
+    document.getElementById('stockCurrentVal').textContent = stock;
+    document.getElementById('stockForm').action = '/productos/' + id + '/ajustar_stock';
+    new bootstrap.Modal(document.getElementById('modalStock')).show();
+}
+
+// Inicializar campos en el modal de nuevo producto al cargar
+document.addEventListener('DOMContentLoaded', () => {
+    toggleStockFields('nuevo');
+});
+</script>
+{% endblock %}

@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Proveedores{% endblock %}
+{% block page_title %}<i class="fas fa-truck-field me-2" style="color:var(--primary-light)"></i>Proveedores{% endblock %}
+
+{% block content %}
+<div class="section-header mb-4">
+    <div>
+        <div class="section-title">Base de Proveedores</div>
+        <div class="section-subtitle">Administra los proveedores de tu comercio</div>
+    </div>
+    <button class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#modalNuevoProveedor">
+        <i class="fas fa-plus me-2"></i>Nuevo Proveedor
+    </button>
+</div>
+
+<!-- Tabla de proveedores -->
+<div class="table-card">
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Nombre / Razón Social</th>
+                    <th>Contacto / Teléfono</th>
+                    <th>NIT / RUT</th>
+                    <th>Registrado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in proveedores %}
+                <tr>
+                    <td><span class="text-muted-custom">{{ p.id }}</span></td>
+                    <td><strong>{{ p.nombre }}</strong></td>
+                    <td>{{ p.contacto or '—' }}</td>
+                    <td><span class="text-muted-custom">{{ p.nit_rut or '—' }}</span></td>
+                    <td style="color:var(--text-muted);font-size:0.82rem">
+                        {{ p.fecha_registro[:10] if p.fecha_registro else '—' }}
+                    </td>
+                    <td>
+                        <div class="d-flex gap-2">
+                            <button class="btn-action edit"
+                                    onclick="openEditProveedor({{ p.id }}, '{{ p.nombre }}', '{{ p.contacto or '' }}', '{{ p.nit_rut or '' }}')"
+                                    title="Editar">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                            {% if session.get('rol') == 'admin' %}
+                            <form method="POST" action="{{ url_for('compras.proveedor_eliminar', pid=p.id) }}"
+                                  onsubmit="return confirm('¿Seguro que deseas eliminar este proveedor?')">
+                                <button type="submit" class="btn-action danger" title="Eliminar">
+                                    <i class="fas fa-trash-can"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center py-5" style="color:var(--text-muted)">
+                        <i class="fas fa-truck-field fa-2x mb-2 d-block" style="opacity:0.2"></i>
+                        No hay proveedores registrados aún.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Nuevo Proveedor -->
+<div class="modal fade" id="modalNuevoProveedor" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--bg-sidebar); border:1px solid var(--border-color); color:white;">
+            <div class="modal-header" style="border-color:var(--border-color)">
+                <h5 class="modal-title" style="color:white">
+                    <i class="fas fa-truck-field me-2" style="color:var(--primary-light)"></i>Registrar Proveedor
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('compras.proveedor_nuevo') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre / Razón Social *</label>
+                        <input type="text" name="nombre" class="form-control" placeholder="Ej: Distribuidora S.A.S" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Contacto / Teléfono</label>
+                        <input type="text" name="contacto" class="form-control" placeholder="Ej: Juan Pérez (312 456 7890)">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">NIT / RUT</label>
+                        <input type="text" name="nit_rut" class="form-control" placeholder="Ej: 901.456.789-0">
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-color:var(--border-color)">
+                    <button type="button" class="btn text-muted-custom" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-primary-custom">
+                        <i class="fas fa-floppy-disk me-2"></i>Guardar Proveedor
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Proveedor -->
+<div class="modal fade" id="modalEditarProveedor" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--bg-sidebar); border:1px solid var(--border-color); color:white;">
+            <div class="modal-header" style="border-color:var(--border-color)">
+                <h5 class="modal-title" style="color:white">
+                    <i class="fas fa-pen me-2" style="color:var(--secondary)"></i>Editar Proveedor
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="editProveedorForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre / Razón Social *</label>
+                        <input type="text" name="nombre" id="editProvNombre" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Contacto / Teléfono</label>
+                        <input type="text" name="contacto" id="editProvContacto" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">NIT / RUT</label>
+                        <input type="text" name="nit_rut" id="editProvNit" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-color:var(--border-color)">
+                    <button type="button" class="btn text-muted-custom" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-primary-custom">
+                        <i class="fas fa-floppy-disk me-2"></i>Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function openEditProveedor(id, nombre, contacto, nit) {
+    document.getElementById('editProvNombre').value = nombre;
+    document.getElementById('editProvContacto').value = contacto;
+    document.getElementById('editProvNit').value = nit;
+    document.getElementById('editProveedorForm').action = '/proveedores/' + id + '/editar';
+    new bootstrap.Modal(document.getElementById('modalEditarProveedor')).show();
+}
+</script>
+{% endblock %}

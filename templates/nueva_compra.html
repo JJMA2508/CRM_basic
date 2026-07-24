@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+{% block title %}Registrar Compra{% endblock %}
+{% block page_title %}<i class="fas fa-truck-ramp-box me-2" style="color:var(--primary-light)"></i>Registrar Ingreso de Mercancía{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Panel Izquierdo: Datos y Selección -->
+    <div class="col-lg-5">
+        <!-- Encabezado de Compra -->
+        <div class="card p-3 mb-3" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--border-radius)">
+            <h5 class="mb-3" style="font-weight:700;"><i class="fas fa-file-invoice me-2 text-warning"></i>Datos de Facturación</h5>
+            
+            <div class="mb-3">
+                <label class="form-label">Proveedor</label>
+                <select id="compraProveedor" class="form-select" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    <option value="">-- Seleccionar Proveedor --</option>
+                    {% for p in proveedores %}
+                    <option value="{{ p.id }}">{{ p.nombre }} {% if p.nit_rut %}(NIT: {{ p.nit_rut }}){% endif %}</option>
+                    {% endfor %}
+                </select>
+                <div class="form-text text-muted-custom" style="font-size:0.75rem;">Si el proveedor no existe, regístralo en la sección de proveedores.</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Número de Factura / Orden *</label>
+                <input type="text" id="compraFactura" class="form-control" placeholder="Ej: FAC-9874" required style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+            </div>
+
+            <div>
+                <label class="form-label">Notas Adicionales</label>
+                <textarea id="compraNotas" class="form-control" rows="2" placeholder="Ej: Entrega de mercancía programada" style="background:var(--bg-input); border-color:var(--border-color); color:white; resize:none;"></textarea>
+            </div>
+        </div>
+
+        <!-- Selector de Artículos -->
+        <div class="card p-3" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--border-radius)">
+            <h5 class="mb-3" style="font-weight:700;"><i class="fas fa-boxes-stacked me-2 text-warning"></i>Agregar Artículo</h5>
+
+            <div class="mb-3">
+                <label class="form-label">Buscar Producto *</label>
+                <select id="prodSelect" class="form-select" onchange="onProductSelect()" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                    <option value="">-- Seleccione un Producto --</option>
+                    {% for p in productos %}
+                    <option value="{{ p.id }}" data-costo="{{ p.costo or 0 }}" data-precio="{{ p.precio }}" data-stock="{{ p.stock if p.stock is not none else 'N/A' }}">
+                        {{ p.nombre }} {% if p.marca %}({{ p.marca }}){% endif %} - [S: {{ p.stock if p.stock is not none else 'Sin límite' }}]
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Cantidad *</label>
+                    <input type="number" id="prodQty" class="form-control" placeholder="10" min="0.01" step="any" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Costo de Compra Unitario *</label>
+                    <input type="number" id="prodCost" class="form-control" placeholder="4500" min="0" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                </div>
+            </div>
+
+            <button class="btn btn-warning w-100" type="button" onclick="addItemToOrder()" style="font-weight:700; color:black;">
+                <i class="fas fa-plus me-2"></i>Agregar a la Orden
+            </button>
+        </div>
+    </div>
+
+    <!-- Panel Derecho: Artículos Cargados y Registro -->
+    <div class="col-lg-7">
+        <div class="card p-4 h-100 d-flex flex-column" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--border-radius)">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0" style="font-weight:700;"><i class="fas fa-receipt me-2 text-warning"></i>Detalle de la Compra</h5>
+                <span class="badge bg-secondary" id="itemsCountBadge">0 productos</span>
+            </div>
+
+            <!-- Tabla de items -->
+            <div class="table-responsive flex-fill" style="min-height: 250px;">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th class="text-center">Cantidad</th>
+                            <th class="text-end">Costo Unit.</th>
+                            <th class="text-end">Subtotal</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="purchaseItemsList">
+                        <!-- Carga dinámica -->
+                        <tr id="emptyRow">
+                            <td colspan="5" class="text-center py-5 text-muted-custom">
+                                No has agregado productos a la orden de compra.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Totales y Botón -->
+            <div class="mt-4 pt-3" style="border-top:2px solid var(--border-color);">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span style="font-weight:600; color:var(--text-secondary);">TOTAL COMPRA:</span>
+                    <span style="font-size:1.8rem; font-weight:800; color:white;" id="totalPurchaseLabel">$0</span>
+                </div>
+                
+                <button class="btn btn-warning w-100 py-2" type="button" onclick="registerPurchase()" style="font-weight:800; color:black; font-size:1.05rem;">
+                    <i class="fas fa-floppy-disk me-2"></i>Registrar Entrada de Mercancía
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let items = {}; // { prodId: { id, nombre, qty, costUnit, subtotal } }
+const CURRENCY_SYMBOL = "{{ session.get('comercio_moneda_simbolo', '$') }}";
+
+function onProductSelect() {
+    const sel = document.getElementById('prodSelect');
+    if (!sel.value) return;
+    const opt = sel.options[sel.selectedIndex];
+    
+    // Auto-completar el último costo
+    const costo = opt.getAttribute('data-costo');
+    document.getElementById('prodCost').value = costo && parseFloat(costo) > 0 ? costo : '';
+    document.getElementById('prodQty').focus();
+}
+
+function addItemToOrder() {
+    const sel = document.getElementById('prodSelect');
+    const prodId = sel.value;
+    const qtyInput = document.getElementById('prodQty');
+    const costInput = document.getElementById('prodCost');
+
+    if (!prodId) {
+        alert("⚠️ Por favor selecciona un producto.");
+        return;
+    }
+    const qty = parseFloat(qtyInput.value);
+    const cost = parseFloat(costInput.value);
+
+    if (isNaN(qty) || qty <= 0) {
+        alert("⚠️ Cantidad inválida.");
+        return;
+    }
+    if (isNaN(cost) || cost < 0) {
+        alert("⚠️ Costo unitario inválido.");
+        return;
+    }
+
+    const opt = sel.options[sel.selectedIndex];
+    const nombre = opt.text.split(' - ')[0];
+
+    // Cargar en estructura de datos
+    if (items[prodId]) {
+        items[prodId].qty += qty;
+        items[prodId].subtotal = items[prodId].qty * items[prodId].costUnit;
+    } else {
+        items[prodId] = {
+            id: prodId,
+            nombre: nombre,
+            qty: qty,
+            costUnit: cost,
+            subtotal: qty * cost
+        };
+    }
+
+    // Reset inputs
+    sel.value = "";
+    qtyInput.value = "";
+    costInput.value = "";
+
+    renderPurchaseList();
+}
+
+function removeItem(id) {
+    delete items[id];
+    renderPurchaseList();
+}
+
+function renderPurchaseList() {
+    const list = document.getElementById('purchaseItemsList');
+    list.innerHTML = "";
+    
+    let total = 0;
+    let count = 0;
+    
+    const keys = Object.keys(items);
+    if (keys.length === 0) {
+        list.innerHTML = `
+            <tr id="emptyRow">
+                <td colspan="5" class="text-center py-5 text-muted-custom">
+                    No has agregado productos a la orden de compra.
+                </td>
+            </tr>
+        `;
+        document.getElementById('totalPurchaseLabel').textContent = CURRENCY_SYMBOL + "0";
+        document.getElementById('itemsCountBadge').textContent = "0 productos";
+        return;
+    }
+
+    keys.forEach(k => {
+        const item = items[k];
+        total += item.subtotal;
+        count++;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${item.nombre}</strong></td>
+            <td class="text-center">${item.qty}</td>
+            <td class="text-end">${CURRENCY_SYMBOL}${item.costUnit.toLocaleString('es-CO')}</td>
+            <td class="text-end" style="color:var(--primary-light); font-weight:700;">${CURRENCY_SYMBOL}${item.subtotal.toLocaleString('es-CO')}</td>
+            <td>
+                <span class="text-danger" onclick="removeItem('${item.id}')" style="cursor:pointer;"><i class="fas fa-trash-can"></i></span>
+            </td>
+        `;
+        list.appendChild(tr);
+    });
+
+    document.getElementById('totalPurchaseLabel').textContent = CURRENCY_SYMBOL + total.toLocaleString('es-CO');
+    document.getElementById('itemsCountBadge').textContent = count + " productos";
+}
+
+function registerPurchase() {
+    const provId = document.getElementById('compraProveedor').value;
+    const facNum = document.getElementById('compraFactura').value.trim();
+    const notas = document.getElementById('compraNotas').value.trim();
+
+    if (!facNum) {
+        alert("⚠️ Por favor ingresa el número de factura o número de orden.");
+        return;
+    }
+
+    const itemsKeys = Object.keys(items);
+    if (itemsKeys.length === 0) {
+        alert("⚠️ Agrega al menos un artículo a la orden de compra.");
+        return;
+    }
+
+    const payload = {
+        proveedor_id: provId ? parseInt(provId) : null,
+        factura_numero: facNum,
+        notas: notas,
+        items: itemsKeys.map(k => ({
+            producto_id: parseInt(items[k].id),
+            cantidad: items[k].qty,
+            costo_unitario: items[k].costUnit
+        }))
+    };
+
+    fetch("{{ url_for('compras.nueva_compra') }}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.ok) {
+            alert("✅ Compra registrada e inventario actualizado exitosamente.");
+            window.location.href = "{{ url_for('compras.index') }}";
+        } else {
+            alert("❌ Error: " + data.error);
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert("❌ Ocurrió un error al procesar el registro.");
+    });
+}
+</script>
+{% endblock %}

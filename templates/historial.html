@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Historial de Ventas{% endblock %}
+{% block page_title %}<i class="fas fa-clock-rotate-left me-2" style="color:var(--primary-light)"></i>Historial de Ventas{% endblock %}
+
+{% block content %}
+
+<!-- ── Filtros ── -->
+<div class="table-card mb-4">
+    <div class="table-card-header">
+        <span class="table-card-title"><i class="fas fa-filter me-2"></i>Filtros</span>
+    </div>
+    <div class="p-3">
+        <form method="GET" action="{{ url_for('ventas.historial') }}">
+            <div class="row g-3">
+                <div class="col-sm-6 col-md-3">
+                    <label class="form-label">Desde</label>
+                    <input type="date" name="desde" class="form-control" value="{{ filtros.desde }}" id="filtro-desde">
+                </div>
+                <div class="col-sm-6 col-md-3">
+                    <label class="form-label">Hasta</label>
+                    <input type="date" name="hasta" class="form-control" value="{{ filtros.hasta }}" id="filtro-hasta">
+                </div>
+                <div class="col-sm-6 col-md-2">
+                    <label class="form-label">Tipo de pago</label>
+                    <select name="tipo_pago" class="form-select" id="filtro-tipo-pago">
+                        <option value="">Todos</option>
+                        <option value="Efectivo" {{ 'selected' if filtros.tipo_pago == 'Efectivo' }}>Efectivo</option>
+                        <option value="Tarjeta" {{ 'selected' if filtros.tipo_pago == 'Tarjeta' }}>Tarjeta</option>
+                        <option value="Transferencia" {{ 'selected' if filtros.tipo_pago == 'Transferencia' }}>Transferencia</option>
+                        <option value="Crédito" {{ 'selected' if filtros.tipo_pago == 'Crédito' }}>Crédito</option>
+                    </select>
+                </div>
+                <div class="col-sm-6 col-md-3">
+                    <label class="form-label">Buscar cliente</label>
+                    <input type="text" name="buscar" class="form-control" value="{{ filtros.buscar }}"
+                           placeholder="Nombre..." id="filtro-buscar">
+                </div>
+                <div class="col-md-1 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn-primary-custom" id="btn-filtrar">
+                        <i class="fas fa-search"></i>
+                    </button>
+                    <a href="{{ url_for('ventas.historial') }}" class="btn-action edit" title="Limpiar">
+                        <i class="fas fa-xmark"></i>
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ── Resultados ── -->
+<div class="table-card">
+    <div class="table-card-header">
+        <span class="table-card-title">
+            {{ ventas | length }} venta{{ 's' if ventas|length != 1 else '' }}
+        </span>
+        <span style="color:var(--primary-light);font-weight:700">
+            Total: {{ total_general | formatear_moneda }}
+        </span>
+    </div>
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Fecha</th>
+                    <th>Hora</th>
+                    <th>Total</th>
+                    <th>Pago</th>
+                    <th>Cliente</th>
+                    <th>Vendedor</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in ventas %}
+                <tr>
+                    <td><span class="text-muted-custom">#{{ v.id }}</span></td>
+                    <td style="font-size:0.85rem">{{ v.fecha[:10] if v.fecha else '—' }}</td>
+                    <td style="font-size:0.85rem">{{ v.fecha[11:16] if v.fecha and v.fecha|length > 10 else '—' }}</td>
+                    <td><strong>{{ v.total | formatear_moneda }}</strong></td>
+                    <td>
+                        <span class="badge-payment badge-{{ v.tipo_pago.lower().replace('é','e') }}">
+                            {{ v.tipo_pago }}
+                        </span>
+                    </td>
+                    <td>{{ v.cliente_nombre or '—' }}</td>
+                    <td style="font-size:0.85rem">{{ v.vendedor }}</td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a href="{{ url_for('ventas.recibo', venta_id=v.id) }}"
+                               class="btn-action edit" title="Ver recibo" id="btn-recibo-{{ v.id }}">
+                                <i class="fas fa-receipt"></i>
+                            </a>
+                            {% if session.get('rol') == 'admin' %}
+                            <form method="POST" action="{{ url_for('ventas.anular', venta_id=v.id) }}"
+                                  onsubmit="return confirm('¿Seguro que deseas anular la venta #{{ v.id }}?')">
+                                <button type="submit" class="btn-action danger" title="Anular" id="btn-anular-{{ v.id }}">
+                                    <i class="fas fa-ban"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center py-5" style="color:var(--text-muted)">
+                        <i class="fas fa-search fa-2x mb-2 d-block" style="opacity:0.2"></i>
+                        No se encontraron ventas con los filtros aplicados
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

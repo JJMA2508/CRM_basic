@@ -1,0 +1,515 @@
+{% extends "base.html" %}
+{% block title %}Nueva Venta{% endblock %}
+{% block page_title %}<i class="fas fa-cash-register me-2" style="color:var(--primary-light)"></i>Nueva Venta{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+    <!-- ── Catálogo de Productos y Buscador ── -->
+    <div class="col-lg-7 col-xl-8">
+        
+        <!-- Buscador (especialmente útil para Ferreterías y Minimercados) -->
+        <div class="card p-3 mb-3" style="background:var(--bg-card); border:1px solid var(--border-color);">
+            <div class="input-group">
+                <span class="input-group-text" style="background:var(--bg-input); border-color:var(--border-color); color:var(--text-muted);">
+                    <i class="fas fa-search"></i>
+                </span>
+                <input type="text" class="form-control" id="prodSearchInput" 
+                       placeholder="Buscar por nombre, marca o código SKU..." 
+                       onkeyup="searchProducts()" style="background:var(--bg-input); border-color:var(--border-color); color:white;">
+                {% if session.get('comercio_tipo') == 'ferreteria' %}
+                <span class="input-group-text" style="background:var(--bg-input); border-color:var(--border-color); color:var(--text-muted); font-size:0.8rem;">
+                    <i class="fas fa-barcode me-1"></i> Modo Escáner Activo
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Tabs de categoría -->
+        <div class="category-tabs mb-3" id="categoryTabs">
+            <button class="category-tab active" onclick="filterCategory('all', this)" id="tab-all">
+                📁 Todos
+            </button>
+            {% for cat in categorias.keys() %}
+            <button class="category-tab" onclick="filterCategory('{{ cat }}', this)" id="tab-{{ cat|lower|replace(' ','_') }}">
+                {% if cat in ('Helados', 'Paletas') %}🍦{% elif cat in ('Pizzas', 'Entradas') %}🍕{% elif cat in ('Herramientas', 'Fijaciones') %}🛠️{% else %}📦{% endif %}
+                {{ cat }}
+            </button>
+            {% endfor %}
+        </div>
+
+        <!-- Grilla de productos -->
+        <div class="product-grid" id="productGrid">
+            {% for cat, prods in categorias.items() %}
+                {% for p in prods %}
+                <div class="product-card"
+                     data-category="{{ cat }}"
+                     data-id="{{ p.id }}"
+                     data-name="{{ p.nombre }}"
+                     data-brand="{{ p.marca or '' }}"
+                     data-sku="{{ p.sku or '' }}"
+                     data-variant="{{ p.variante or '' }}"
+                     data-price="{{ p.precio | int }}"
+                     data-stock="{{ p.stock if p.stock is not none else '' }}"
+                     onclick="addToCart({{ p.id }}, '{{ p.nombre }}', '{{ p.variante or '' }}', {{ p.precio | int }}, '{{ p.stock if p.stock is not none else '' }}', '{{ p.unidad_medida or 'Unidad' }}')"
+                     id="prod-{{ p.id }}">
+                    
+                    <!-- Badge de stock (Ferretería/General) -->
+                    {% if p.stock is not none %}
+                    <span class="position-absolute top-0 end-0 m-2 stock-badge {% if p.stock <= 0 %}empty{% elif p.stock <= p.stock_minimo %}low{% else %}ok{% endif %}" style="font-size:0.65rem;">
+                        Stock: {{ p.stock | int }}
+                    </span>
+                    {% endif %}
+
+                    <span class="product-emoji">
+                        {% if cat in ('Helados', 'Paletas') %}🍦{% elif cat in ('Pizzas', 'Entradas') %}🍕{% elif cat in ('Herramientas', 'Fijaciones') %}🛠️{% else %}📦{% endif %}
+                    </span>
+                    
+                    <div class="product-name" style="font-size: 0.95rem; font-weight: 700; margin-top:5px;">{{ p.nombre }}</div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mt-2 w-100 px-1">
+                        <span class="product-variant" style="font-size:0.75rem; color:var(--text-muted);">
+                            {% if p.marca %}{{ p.marca }}{% elif p.variante %}{{ p.variante }}{% else %}{{ cat }}{% endif %}
+                        </span>
+                        <span class="product-price" style="font-weight:700; color:var(--primary-light)">
+                            {{ p.precio | formatear_moneda }}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="text-center py-5" style="color:var(--text-muted);grid-column:1/-1">
+                No hay productos activos en este comercio. <a href="{{ url_for('productos.index') }}">Agregar productos →</a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ── Carrito / Resumen ── -->
+    <div class="col-lg-5 col-xl-4">
+        <div class="cart-container" id="cartContainer">
+            <div class="cart-header d-flex align-items-center">
+                <i class="fas fa-shopping-cart me-2" style="color:var(--primary-light)"></i>
+                <span>Carrito</span>
+                {% if mesa_numero %}
+                <span class="badge bg-danger ms-2" style="font-size:0.75rem;">{{ mesa_numero }}</span>
+                {% endif %}
+                <span class="ms-auto" id="cartCount"
+                      style="background:var(--primary);color:white;border-radius:20px;padding:2px 10px;font-size:0.75rem">0</span>
+            </div>
+
+            <!-- Items del carrito -->
+            <div class="cart-items">
+                <div id="cartItemsList"></div>
+                <div class="cart-empty" id="cartEmpty">
+                    <i class="fas fa-shopping-cart fa-2x mb-2 d-block" style="opacity:0.2"></i>
+                    Toca un producto del catálogo para agregarlo
+                </div>
+            </div>
+
+            <!-- Footer del carrito -->
+            <div class="cart-footer">
+                <div class="cart-total mb-3">
+                    <span class="cart-total-label">Total</span>
+                    <span class="cart-total-value" id="cartTotal">$0</span>
+                </div>
+
+                <!-- Opciones Especiales de Pizzería (Mesas / Pedido) -->
+                {% if session.get('control_mesas') == 1 %}
+                <div class="mb-3 p-2 rounded" style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color);">
+                    <label class="form-label" style="font-size:0.8rem; font-weight:600;"><i class="fas fa-utensils me-1"></i> Tipo de Pedido</label>
+                    <div class="d-flex gap-2 mb-2">
+                        <label class="btn btn-sm btn-outline-secondary flex-fill" id="opt-llevar">
+                            <input type="radio" name="tipo_pedido_ui" value="Para Llevar" {% if not mesa_id %}checked{% endif %} onchange="onPedidoTypeChange(this)" style="display:none;"> Para Llevar
+                        </label>
+                        <label class="btn btn-sm btn-outline-secondary flex-fill" id="opt-domicilio">
+                            <input type="radio" name="tipo_pedido_ui" value="Domicilio" onchange="onPedidoTypeChange(this)" style="display:none;"> Domicilio
+                        </label>
+                        <label class="btn btn-sm btn-outline-secondary flex-fill {% if mesa_id %}active{% endif %}" id="opt-mesa">
+                            <input type="radio" name="tipo_pedido_ui" value="Mesa" {% if mesa_id %}checked{% endif %} onchange="onPedidoTypeChange(this)" style="display:none;"> Mesa
+                        </label>
+                    </div>
+
+                    <div id="pizzeriaMesaSelector" style="{% if mesa_id %}display:block;{% else %}display:none;{% endif %}">
+                        <label class="form-label text-muted-custom" style="font-size:0.75rem;">Seleccionar Mesa</label>
+                        <select class="form-select form-select-sm" id="mesaSelect" onchange="updateMesaHidden()">
+                            <option value="">-- Elige Mesa --</option>
+                            {% for m in mesas_existentes %}
+                            <option value="{{ m.id }}" {% if m.id|string == mesa_id|string %}selected{% endif %}>
+                                {{ m.numero }} ({% if m.estado == 'Ocupada' %}Ocupada{% else %}Libre{% endif %})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Tipo de pago -->
+                <div class="mb-3">
+                    <label class="form-label" style="font-size:0.8rem; font-weight:600;">Método de Pago</label>
+                    <div class="payment-options">
+                        <label class="payment-opt" id="pay-efectivo">
+                            <input type="radio" name="tipo_pago_ui" value="Efectivo" checked onchange="onPaymentChange(this)">
+                            <span><i class="fas fa-money-bills"></i> Efectivo</span>
+                        </label>
+                        <label class="payment-opt" id="pay-tarjeta">
+                            <input type="radio" name="tipo_pago_ui" value="Tarjeta" onchange="onPaymentChange(this)">
+                            <span><i class="fas fa-credit-card"></i> Tarjeta</span>
+                        </label>
+                        <label class="payment-opt" id="pay-transferencia">
+                            <input type="radio" name="tipo_pago_ui" value="Transferencia" onchange="onPaymentChange(this)">
+                            <span><i class="fas fa-mobile-screen-button"></i> Transfer.</span>
+                        </label>
+                        <label class="payment-opt" id="pay-credito">
+                            <input type="radio" name="tipo_pago_ui" value="Crédito" onchange="onPaymentChange(this)">
+                            <span><i class="fas fa-clock"></i> Crédito</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Nombre cliente (obligatorio en crédito) -->
+                <div class="mb-3" id="clienteField">
+                    <label class="form-label" id="clienteLabel" style="font-size:0.8rem; font-weight:600;">
+                        Cliente <span id="clienteRequired" style="color:var(--danger);display:none">*</span>
+                    </label>
+                    <input type="text" class="form-control" id="clienteInput"
+                           placeholder="Opcional — requerido en crédito"
+                           list="clientesList" autocomplete="off">
+                    <datalist id="clientesList">
+                        {% for c in clientes_existentes %}
+                        <option value="{{ c.nombre }}">
+                        {% endfor %}
+                    </datalist>
+                </div>
+
+                <!-- Notas -->
+                <div class="mb-3">
+                    <label class="form-label" style="font-size:0.8rem; font-weight:600;">Notas Generales</label>
+                    <input type="text" class="form-control" id="notasInput" placeholder="Observaciones de la venta...">
+                </div>
+
+                <!-- Botones de Acción -->
+                <div class="d-flex flex-column gap-2">
+                    <!-- Botón guardar comanda (sólo Pizzerías para pedidos en mesa) -->
+                    {% if session.get('control_mesas') == 1 %}
+                    <button type="button" class="btn btn-outline-warning w-100" id="btnGuardarComanda" onclick="submitSale(true)" style="{% if mesa_id %}display:block;{% else %}display:none;{% endif %}">
+                        <i class="fas fa-save me-2"></i>Guardar Comanda
+                    </button>
+                    {% endif %}
+
+                    <!-- Botón registrar venta definitiva -->
+                    <button class="btn-primary-custom w-100" onclick="submitSale(false)" id="btnSubmit">
+                        <i class="fas fa-check me-2"></i>Registrar Venta
+                    </button>
+                </div>
+
+                <!-- Form oculto -->
+                <form id="saleForm" method="POST" action="{{ url_for('ventas.registrar') }}" style="display:none">
+                    <input type="hidden" name="tipo_pago" id="tipo_pago_hidden" value="Efectivo">
+                    <input type="hidden" name="nombre_cliente" id="nombre_cliente_hidden">
+                    <input type="hidden" name="notas" id="notas_hidden">
+                    <input type="hidden" name="items_json" id="items_json_hidden">
+                    
+                    <!-- Variables pizzería -->
+                    <input type="hidden" name="tipo_pedido" id="tipo_pedido_hidden" value="Para Llevar">
+                    <input type="hidden" name="mesa_id" id="mesa_id_hidden" value="{{ mesa_id or '' }}">
+                    <input type="hidden" name="guardar_comanda" id="guardar_comanda_hidden" value="false">
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// ── Estado del carrito ───────────────────────────────────────────────────────
+let cart = {}; // { id: { name, variant, price, qty, stock, unit, notas_item } }
+const CURRENCY_SYMBOL = "{{ session.get('comercio_moneda_simbolo', '$') }}";
+
+let _itemsList, _emptyMsg, _countEl, _totalEl;
+
+document.addEventListener('DOMContentLoaded', () => {
+    _itemsList = document.getElementById('cartItemsList');
+    _emptyMsg  = document.getElementById('cartEmpty');
+    _countEl   = document.getElementById('cartCount');
+    _totalEl   = document.getElementById('cartTotal');
+
+    // Inicializar estado de botones tipo de pedido si es pizzería
+    {% if session.get('comercio_tipo') == 'pizzeria' %}
+    updatePedidoTypeButtons();
+    {% endif %}
+
+    // Cargar comanda existente de mesa si aplica
+    {% if mesa_carrito %}
+    try {
+        const rawJson = {{ mesa_carrito | tojson | safe }};
+        cart = JSON.parse(rawJson);
+        renderCart();
+    } catch (e) {
+        console.error("Error al cargar la comanda de la mesa:", e);
+        cart = {};
+    }
+    {% endif %}
+});
+
+// ── Agregar al carrito ───────────────────────────────────────────────────────
+function addToCart(id, name, variant, price, stockStr, unit) {
+    const key = String(id);
+    const stock = stockStr !== '' ? parseFloat(stockStr) : null;
+    
+    let currentQty = cart[key] ? cart[key].qty : 0;
+    
+    // Validar límite de stock (Ferretería/General)
+    if (stock !== null && currentQty + 1 > stock) {
+        alert('❌ Stock insuficiente. Solo quedan ' + stock + ' unidades disponibles de este producto.');
+        return;
+    }
+
+    if (cart[key]) {
+        cart[key].qty += 1;
+    } else {
+        cart[key] = { name, variant, price, qty: 1, stock, unit, notas_item: '' };
+    }
+    renderCart();
+
+    // Feedback visual
+    const card = document.getElementById('prod-' + id);
+    if (card) {
+        card.style.borderColor = 'var(--primary)';
+        card.style.background = 'rgba(139,92,246,0.1)';
+        setTimeout(() => { card.style.borderColor = ''; card.style.background = ''; }, 300);
+    }
+}
+
+function updateQty(id, delta) {
+    const key = String(id);
+    if (!cart[key]) return;
+    
+    let newQty = cart[key].qty + delta;
+    if (newQty <= 0) {
+        delete cart[key];
+        renderCart();
+        return;
+    }
+
+    // Validar límite de stock al subir cantidad
+    if (delta > 0 && cart[key].stock !== null && newQty > cart[key].stock) {
+        alert('❌ Stock insuficiente. Solo quedan ' + cart[key].stock + ' unidades.');
+        return;
+    }
+
+    cart[key].qty = newQty;
+    renderCart();
+}
+
+function updateItemNotes(id, noteValue) {
+    const key = String(id);
+    if (cart[key]) {
+        cart[key].notas_item = noteValue;
+    }
+}
+
+function removeItem(id) {
+    delete cart[String(id)];
+    renderCart();
+}
+
+function renderCart() {
+    if (!_itemsList) return;
+    const ids = Object.keys(cart);
+    let total = 0;
+    let totalItems = 0;
+
+    if (ids.length === 0) {
+        _itemsList.innerHTML = '';
+        _emptyMsg.style.display = 'block';
+        _countEl.textContent = '0';
+        _totalEl.textContent = '$0';
+        return;
+    }
+
+    _emptyMsg.style.display = 'none';
+    _itemsList.innerHTML = '';
+
+    ids.forEach(key => {
+        const item = cart[key];
+        const subtotal = item.price * item.qty;
+        total += subtotal;
+        totalItems += item.qty;
+
+        const div = document.createElement('div');
+        div.className = 'cart-item d-flex flex-wrap align-items-center mb-2 p-2 rounded';
+        div.style.background = 'rgba(255,255,255,0.02)';
+        div.style.border = '1px solid var(--border-color)';
+        
+        div.innerHTML = `
+            <div class="cart-item-name" style="flex:1; min-width:130px;">
+                <div style="font-weight:600; font-size:0.85rem;">${item.name}</div>
+                <small style="color:var(--text-muted); font-size:0.7rem;">
+                    ${item.variant ? item.variant : ''} 
+                    ${item.stock !== null ? `(Stock: ${item.stock})` : ''}
+                </small>
+            </div>
+            <div class="cart-item-qty d-flex align-items-center gap-1" style="width:100px; justify-content:center;">
+                <button class="btn btn-sm btn-dark px-2 py-0" type="button" onclick="updateQty('${key}', -1)" style="line-height:1.2;">−</button>
+                <span class="qty-value" style="font-weight:700; font-size:0.9rem; min-width:20px; text-align:center;">${item.qty}</span>
+                <button class="btn btn-sm btn-dark px-2 py-0" type="button" onclick="updateQty('${key}', 1)" style="line-height:1.2;">+</button>
+            </div>
+            <div class="cart-item-price" style="width:75px; text-align:right; font-weight:700; font-size:0.85rem; color:var(--primary-light)">
+                ${CURRENCY_SYMBOL}${subtotal.toLocaleString('es-CO')}
+            </div>
+            <span class="cart-item-remove ms-2 text-danger" onclick="removeItem('${key}')" style="cursor:pointer; font-size:0.85rem;">
+                <i class="fas fa-trash-can"></i>
+            </span>
+            <!-- Observaciones por item (ej. notas de toppings o preparación de pizza) -->
+            <div class="w-100 mt-2">
+                <input type="text" class="form-control form-control-sm" 
+                       placeholder="Especificaciones (sabor, adiciones, etc)..." 
+                       value="${item.notas_item || ''}" 
+                       onchange="updateItemNotes('${key}', this.value)" 
+                       style="font-size:0.75rem; background:rgba(0,0,0,0.2); border-color:var(--border-color); color:var(--text-secondary); height:26px;">
+            </div>
+        `;
+        _itemsList.appendChild(div);
+    });
+
+    _countEl.textContent = totalItems;
+    _totalEl.textContent = CURRENCY_SYMBOL + total.toLocaleString('es-CO');
+}
+
+// ── Filtros y Buscador ───────────────────────────────────────────────────────
+function filterCategory(cat, btn) {
+    document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+
+    document.querySelectorAll('.product-card').forEach(card => {
+        if (cat === 'all' || card.dataset.category === cat) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+function searchProducts() {
+    const query = document.getElementById('prodSearchInput').value.toLowerCase().trim();
+    document.querySelectorAll('.product-card').forEach(card => {
+        const name = card.dataset.name.toLowerCase();
+        const brand = card.dataset.brand.toLowerCase();
+        const sku = card.dataset.sku.toLowerCase();
+
+        if (name.includes(query) || brand.includes(query) || sku.includes(query)) {
+            card.style.style = ''; // reset
+            card.setAttribute('style', 'display: block !important');
+        } else {
+            card.setAttribute('style', 'display: none !important');
+        }
+    });
+}
+
+// ── Lógica de Pizzería: Tipo de Pedido ─────────────────────────────────────────
+function onPedidoTypeChange(radio) {
+    document.getElementById('tipo_pedido_hidden').value = radio.value;
+    updatePedidoTypeButtons();
+
+    const selector = document.getElementById('pizzeriaMesaSelector');
+    const btnGuardar = document.getElementById('btnGuardarComanda');
+    
+    if (radio.value === 'Mesa') {
+        selector.style.display = 'block';
+        btnGuardar.style.display = 'block';
+    } else {
+        selector.style.display = 'none';
+        btnGuardar.style.display = 'none';
+        document.getElementById('mesaSelect').value = '';
+        document.getElementById('mesa_id_hidden').value = '';
+    }
+}
+
+function updatePedidoTypeButtons() {
+    document.querySelectorAll('[name="tipo_pedido_ui"]').forEach(radio => {
+        const lbl = radio.closest('label');
+        if (radio.checked) {
+            lbl.classList.add('active', 'btn-primary');
+            lbl.classList.remove('btn-outline-secondary');
+        } else {
+            lbl.classList.remove('active', 'btn-primary');
+            lbl.classList.add('btn-outline-secondary');
+        }
+    });
+}
+
+function updateMesaHidden() {
+    const sel = document.getElementById('mesaSelect');
+    document.getElementById('mesa_id_hidden').value = sel.value;
+}
+
+// ── Métodos de Pago ─────────────────────────────────────────────────────────
+function onPaymentChange(radio) {
+    document.getElementById('tipo_pago_hidden').value = radio.value;
+    
+    // Resaltar seleccionado
+    document.querySelectorAll('.payment-opt').forEach(opt => opt.classList.remove('active'));
+    radio.closest('.payment-opt').classList.add('active');
+
+    // Validación cliente requerida para Crédito
+    const requiredSpan = document.getElementById('clienteRequired');
+    if (radio.value === 'Crédito') {
+        requiredSpan.style.display = 'inline';
+    } else {
+        requiredSpan.style.display = 'none';
+    }
+}
+
+// ── Registrar / Guardar ──────────────────────────────────────────────────────
+function submitSale(guardarComanda = false) {
+    const ids = Object.keys(cart);
+    if (ids.length === 0) {
+        alert('⚠️ El carrito está vacío. Agrega productos primero.');
+        return;
+    }
+
+    const tipoPago = document.getElementById('tipo_pago_hidden').value;
+    const cliente = document.getElementById('clienteInput').value.trim();
+    
+    if (tipoPago === 'Crédito' && !cliente) {
+        alert('⚠️ Para registrar ventas a crédito es obligatorio ingresar el nombre del cliente.');
+        document.getElementById('clienteInput').focus();
+        return;
+    }
+
+    // Si es pizzería y se elige mesa, validar que seleccionó una mesa
+    {% if session.get('control_mesas') == 1 %}
+    const tipoPedido = document.getElementById('tipo_pedido_hidden').value;
+    if (tipoPedido === 'Mesa' && !document.getElementById('mesa_id_hidden').value) {
+        alert('⚠️ Debes seleccionar una mesa para este pedido.');
+        document.getElementById('mesaSelect').focus();
+        return;
+    }
+    {% endif %}
+
+    // Mapear items para enviar
+    const itemsArray = ids.map(key => {
+        return {
+            id: parseInt(key),
+            qty: cart[key].qty,
+            notas_item: cart[key].notas_item
+        };
+    });
+
+    // Rellenar campos ocultos del form
+    document.getElementById('nombre_cliente_hidden').value = cliente;
+    document.getElementById('notas_hidden').value = document.getElementById('notasInput').value.trim();
+    document.getElementById('items_json_hidden').value = JSON.stringify(itemsArray);
+    document.getElementById('guardar_comanda_hidden').value = guardarComanda ? 'true' : 'false';
+
+    // Deshabilitar botón temporalmente para prevenir doble click
+    const btn = document.getElementById('btnSubmit');
+    if (btn) btn.disabled = true;
+
+    // Enviar formulario
+    document.getElementById('saleForm').submit();
+}
+</script>
+{% endblock %}

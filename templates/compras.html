@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Compras{% endblock %}
+{% block page_title %}<i class="fas fa-truck-ramp-box me-2" style="color:var(--primary-light)"></i>Órdenes de Compra{% endblock %}
+
+{% block content %}
+<div class="section-header mb-4">
+    <div>
+        <div class="section-title">Ingreso de Mercancías</div>
+        <div class="section-subtitle">Historial de compras y actualización de existencias</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('compras.proveedores') }}" class="btn btn-dark" style="border:1px solid var(--border-color); color:white; font-weight:600; text-decoration:none;">
+            <i class="fas fa-truck-field me-2 text-warning"></i>Proveedores
+        </a>
+        <a href="{{ url_for('compras.nueva_compra') }}" class="btn-primary-custom" style="text-decoration:none; display:flex; align-items:center;">
+            <i class="fas fa-plus me-2"></i>Registrar Compra
+        </a>
+    </div>
+</div>
+
+<!-- Tabla de compras -->
+<div class="table-card">
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>Factura / Orden</th>
+                    <th>Proveedor</th>
+                    <th>Fecha</th>
+                    <th class="text-center">Artículos</th>
+                    <th>Total Invertido</th>
+                    <th>Registrado Por</th>
+                    <th>Notas</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in compras %}
+                <tr>
+                    <td>
+                        <span class="badge bg-secondary" style="font-family:monospace; font-size:0.85rem;">
+                            #{{ c.factura_numero or 'S/N' }}
+                        </span>
+                        <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">Ref: Compra #{{ c.id }}</div>
+                    </td>
+                    <td><strong>{{ c.proveedor_nombre or 'Sin Proveedor' }}</strong></td>
+                    <td style="font-size:0.82rem;">{{ c.fecha[:16] if c.fecha else '—' }}</td>
+                    <td class="text-center"><span class="badge bg-dark">{{ c.items_count }}</span></td>
+                    <td><strong style="color:var(--primary-light)">{{ c.total | formatear_moneda }}</strong></td>
+                    <td style="font-size:0.82rem;">{{ c.usuario_nombre }}</td>
+                    <td style="font-size:0.82rem; color:var(--text-muted); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ c.notas or '' }}">
+                        {{ c.notas or '—' }}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center py-5" style="color:var(--text-muted)">
+                        <i class="fas fa-truck-ramp-box fa-2x mb-2 d-block" style="opacity:0.2"></i>
+                        No hay compras registradas en este período.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Recibo #{{ venta.id }}{% endblock %}
+{% block page_title %}<i class="fas fa-receipt me-2" style="color:var(--primary-light)"></i>Recibo #{{ venta.id }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7 col-lg-5">
+
+        <!-- Recibo -->
+        <div class="table-card" id="reciboCard">
+            <!-- Header del recibo -->
+            <div style="text-align:center;padding:28px 24px 16px;border-bottom:1px dashed var(--border-color)">
+                <div style="margin-bottom:12px; display:flex; justify-content:center;">
+                    {% if session.get('comercio_logo_url') %}
+                    <img src="{{ session.get('comercio_logo_url') }}" alt="Logo" style="width:70px; height:70px; border-radius:50%; object-fit:cover;">
+                    {% else %}
+                    <div style="font-size:2.5rem;">{{ session.get('comercio_logo_emoji', '🏪') }}</div>
+                    {% endif %}
+                </div>
+                <div style="font-size:1.3rem;font-weight:800;background:linear-gradient(135deg,var(--primary-light),var(--secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">
+                    {{ session.get('comercio_nombre', 'NegocioFlex') }}
+                </div>
+                <div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">{{ session.get('comercio_tipo', 'general') | capitalize }} • Recibo de Venta</div>
+                <div style="font-size:0.82rem;color:var(--text-secondary);margin-top:8px">
+                    {{ venta.fecha[:10] if venta.fecha else '' }} | {{ venta.fecha[11:16] if venta.fecha and venta.fecha|length > 10 else '' }}
+                </div>
+                <div style="font-size:0.78rem;color:var(--text-muted)">Venta #{{ venta.id }} | {{ venta.vendedor }}</div>
+            </div>
+
+            <!-- Productos -->
+            <div style="padding:16px 20px">
+                {% for d in detalles %}
+                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+                    <div>
+                        <div style="font-size:0.9rem;font-weight:500">{{ d.producto_nombre }}</div>
+                        {% if d.variante %}
+                        <div style="font-size:0.75rem;color:var(--text-muted)">{{ d.variante }}</div>
+                        {% endif %}
+                        <div style="font-size:0.78rem;color:var(--text-muted)">
+                            {{ d.precio_unitario | formatear_moneda }} × {{ d.cantidad }}
+                        </div>
+                    </div>
+                    <div style="font-weight:600;color:var(--primary-light);white-space:nowrap">
+                        {{ d.subtotal | formatear_moneda }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Total -->
+            <div style="padding:16px 20px;border-top:2px solid var(--primary);background:rgba(139,92,246,0.05)">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font-size:1rem;font-weight:600;color:var(--text-secondary)">TOTAL</span>
+                    <span style="font-size:1.6rem;font-weight:800;color:var(--text-primary)">
+                        {{ venta.total | formatear_moneda }}
+                    </span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-top:8px">
+                    <span style="font-size:0.82rem;color:var(--text-muted)">Método de pago</span>
+                    <span class="badge-payment badge-{{ venta.tipo_pago.lower().replace('é','e') }}">
+                        {{ venta.tipo_pago }}
+                    </span>
+                </div>
+                {% if venta.cliente_nombre %}
+                <div style="display:flex;justify-content:space-between;margin-top:6px">
+                    <span style="font-size:0.82rem;color:var(--text-muted)">Cliente</span>
+                    <span style="font-size:0.82rem;color:var(--text-secondary)">{{ venta.cliente_nombre }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Footer del recibo -->
+            <div style="text-align:center;padding:16px;border-top:1px dashed var(--border-color);color:var(--text-muted);font-size:0.75rem">
+                ¡Gracias por tu compra! {{ session.get('comercio_logo_emoji', '🏪') }}<br>Vuelve pronto a {{ session.get('comercio_nombre', 'NegocioFlex') }}
+            </div>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="d-flex gap-3 mt-3">
+            <button class="btn-primary-custom flex-fill" onclick="window.print()" id="btn-imprimir">
+                <i class="fas fa-print me-2"></i>Imprimir
+            </button>
+            <a href="{{ url_for('ventas.nueva') }}" class="btn-secondary-custom flex-fill text-center" id="btn-nueva-venta">
+                <i class="fas fa-plus me-2"></i>Nueva Venta
+            </a>
+        </div>
+        <div class="mt-2 text-center">
+            <a href="{{ url_for('ventas.historial') }}" style="color:var(--text-muted);font-size:0.82rem">
+                ← Volver al historial
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    .sidebar, .top-header, .flash-wrapper, .d-flex.gap-3, .mt-2, #nav-nueva-venta { display: none !important; }
+    .main-content { margin-left: 0 !important; }
+    .page-content { padding: 0 !important; }
+    #reciboCard {
+        border: none !important;
+        box-shadow: none !important;
+        background: white !important;
+        color: #111 !important;
+    }
+    body { background: white !important; }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}Cliente: {{ cliente.nombre }}{% endblock %}
+{% block page_title %}<i class="fas fa-user me-2" style="color:var(--primary-light)"></i>{{ cliente.nombre }}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Info del cliente -->
+    <div class="col-md-4">
+        <div class="stat-card {{ 'orange' if cliente.saldo_credito > 0 else 'green' }}">
+            <div class="stat-icon {{ 'orange' if cliente.saldo_credito > 0 else 'green' }}">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="stat-value" style="font-size:1.3rem">{{ cliente.nombre }}</div>
+            <div class="stat-label">{{ cliente.telefono or 'Sin teléfono' }}</div>
+            <hr style="border-color:var(--border-color);margin:16px 0">
+            <div style="display:flex;justify-content:space-between">
+                <span style="color:var(--text-muted);font-size:0.82rem">Saldo pendiente</span>
+                <strong style="color:{{ 'var(--warning)' if cliente.saldo_credito > 0 else 'var(--success)' }}">
+                    {{ cliente.saldo_credito | formatear_moneda }}
+                </strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:8px">
+                <span style="color:var(--text-muted);font-size:0.82rem">Registrado</span>
+                <span style="font-size:0.82rem">{{ cliente.fecha_registro[:10] if cliente.fecha_registro else '—' }}</span>
+            </div>
+            {% if cliente.nit_rut %}
+            <div style="display:flex;justify-content:space-between;margin-top:8px">
+                <span style="color:var(--text-muted);font-size:0.82rem">NIT / RUT</span>
+                <span style="font-size:0.82rem;font-weight:600;">{{ cliente.nit_rut }}</span>
+            </div>
+            {% endif %}
+            {% if cliente.email %}
+            <div style="display:flex;justify-content:space-between;margin-top:8px">
+                <span style="color:var(--text-muted);font-size:0.82rem">Email</span>
+                <span style="font-size:0.82rem;text-align:right;max-width:180px;word-break:break-all;">{{ cliente.email }}</span>
+            </div>
+            {% endif %}
+            {% if cliente.direccion %}
+            <div style="display:flex;justify-content:space-between;margin-top:8px">
+                <span style="color:var(--text-muted);font-size:0.82rem">Dirección</span>
+                <span style="font-size:0.82rem;text-align:right;max-width:180px;">{{ cliente.direccion }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if cliente.saldo_credito > 0 %}
+        <button class="btn-primary-custom w-100 mt-3"
+                style="background:linear-gradient(135deg,#059669,#10B981)"
+                data-bs-toggle="modal" data-bs-target="#modalPago"
+                id="btn-registrar-abono">
+            <i class="fas fa-dollar-sign me-2"></i>Registrar Abono
+        </button>
+        {% endif %}
+
+        <a href="{{ url_for('clientes.index') }}" class="btn-action edit d-block mt-3 text-center"
+           style="padding:10px" id="btn-volver-clientes">
+            <i class="fas fa-arrow-left me-2"></i>Volver a Clientes
+        </a>
+
+        <!-- Productos más consumidos -->
+        <div class="card p-3 mt-4" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--border-radius)">
+            <div style="font-weight:700; font-size:0.9rem; margin-bottom:12px; color:var(--text-primary);">
+                <i class="fas fa-chart-pie me-2 text-warning"></i>Frecuencia de Consumo
+            </div>
+            {% for pf in productos_frecuentes %}
+            <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid rgba(255,255,255,0.03); font-size:0.82rem;">
+                <div>
+                    <strong style="color:white;">{{ pf.nombre }}</strong>
+                    <div style="font-size:0.75rem; color:var(--text-muted)">{{ pf.categoria }}</div>
+                </div>
+                <span class="badge bg-secondary" style="font-size:0.75rem; font-weight:700;">x{{ pf.total_cantidad | int }}</span>
+            </div>
+            {% else %}
+            <div class="text-center py-3 text-muted-custom" style="font-size:0.8rem;">
+                Sin historial de consumo
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Historial -->
+    <div class="col-md-8">
+        <!-- Ventas del cliente -->
+        <div class="table-card mb-4">
+            <div class="table-card-header">
+                <span class="table-card-title"><i class="fas fa-shopping-bag me-2"></i>Ventas ({{ ventas|length }})</span>
+                <span style="color:var(--primary-light);font-weight:700">
+                    Total: {{ ventas|sum(attribute='total') | formatear_moneda }}
+                </span>
+            </div>
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Fecha</th>
+                            <th>Total</th>
+                            <th>Pago</th>
+                            <th>Vendedor</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in ventas %}
+                        <tr>
+                            <td><span class="text-muted-custom">#{{ v.id }}</span></td>
+                            <td style="font-size:0.82rem">{{ v.fecha[:16] if v.fecha else '—' }}</td>
+                            <td><strong>{{ v.total | formatear_moneda }}</strong></td>
+                            <td>
+                                <span class="badge-payment badge-{{ v.tipo_pago.lower().replace('é','e') }}">
+                                    {{ v.tipo_pago }}
+                                </span>
+                            </td>
+                            <td style="font-size:0.82rem">{{ v.vendedor }}</td>
+                            <td>
+                                <a href="{{ url_for('ventas.recibo', venta_id=v.id) }}"
+                                   class="btn-action edit" title="Ver recibo" id="btn-recibo-cliente-{{ v.id }}">
+                                    <i class="fas fa-receipt"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4" style="color:var(--text-muted)">
+                                Sin ventas registradas
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagos de crédito -->
+        {% if pagos %}
+        <div class="table-card">
+            <div class="table-card-header">
+                <span class="table-card-title"><i class="fas fa-dollar-sign me-2" style="color:var(--success)"></i>Abonos registrados</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Monto</th>
+                            <th>Registrado por</th>
+                            <th>Notas</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in pagos %}
+                        <tr>
+                            <td style="font-size:0.82rem">{{ p.fecha[:16] if p.fecha else '—' }}</td>
+                            <td><strong style="color:var(--success)">{{ p.monto | formatear_moneda }}</strong></td>
+                            <td style="font-size:0.82rem">{{ p.registrado_por }}</td>
+                            <td style="font-size:0.82rem;color:var(--text-muted)">{{ p.notas or '—' }}</td>
+                            <td>
+                                <a href="{{ url_for('clientes.recibo_pago', pago_id=p.id) }}"
+                                   class="btn-action edit" title="Ver Recibo de Abono" id="btn-recibo-pago-{{ p.id }}">
+                                    <i class="fas fa-receipt text-success"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Pago -->
+{% if cliente.saldo_credito > 0 %}
+<div class="modal fade" id="modalPago" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--border-radius)">
+            <div class="modal-header" style="border-color:var(--border-color)">
+                <h5 class="modal-title" style="color:var(--text-primary)">
+                    <i class="fas fa-dollar-sign me-2" style="color:var(--success)"></i>Registrar Abono
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('clientes.pagar_credito', cid=cliente.id) }}">
+                <div class="modal-body">
+                    <p style="color:var(--text-secondary)">
+                        Saldo pendiente: <strong style="color:var(--warning)">
+                            {{ cliente.saldo_credito | formatear_moneda }}
+                        </strong>
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label">Monto del abono (COP) *</label>
+                        <input type="number" name="monto" class="form-control"
+                               min="100" max="{{ cliente.saldo_credito | int }}"
+                               step="100" placeholder="0" required id="monto-abono">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notas</label>
+                        <input type="text" name="notas" class="form-control" placeholder="Ej: Pago en efectivo" id="notas-abono">
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-color:var(--border-color)">
+                    <button type="button" class="btn" style="color:var(--text-muted)" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-primary-custom" style="background:linear-gradient(135deg,#059669,#10B981)" id="btn-guardar-abono-detalle">
+                        <i class="fas fa-check me-2"></i>Registrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

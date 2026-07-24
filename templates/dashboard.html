@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}<i class="fas fa-chart-line me-2" style="color:var(--primary-light)"></i>Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- ── Stat Cards ──────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <div class="stat-card purple">
+            <div class="stat-icon purple"><i class="fas fa-shopping-bag"></i></div>
+            <div class="stat-value">{{ ventas_hoy.count }}</div>
+            <div class="stat-label">Ventas hoy</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card pink">
+            <div class="stat-icon pink"><i class="fas fa-coins"></i></div>
+            <div class="stat-value" style="font-size:1.4rem">{{ ventas_hoy.total | formatear_moneda }}</div>
+            <div class="stat-label">Ingresos hoy</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card green">
+            <div class="stat-icon green"><i class="fas fa-calendar-week"></i></div>
+            <div class="stat-value" style="font-size:1.4rem">{{ ventas_semana.total | formatear_moneda }}</div>
+            <div class="stat-label">Esta semana</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card orange">
+            <div class="stat-icon orange"><i class="fas fa-hand-holding-dollar"></i></div>
+            <div class="stat-value">{{ creditos.count }}</div>
+            <div class="stat-label">Créditos pendientes</div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Gráficos ───────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="chart-card">
+            <div class="chart-card-title">
+                <i class="fas fa-chart-bar" style="color:var(--primary-light)"></i>
+                Ventas últimos 7 días
+            </div>
+            <canvas id="salesChart" height="120"></canvas>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="chart-card h-100">
+            <div class="chart-card-title">
+                <i class="fas fa-chart-pie" style="color:var(--secondary)"></i>
+                Métodos de pago (hoy)
+            </div>
+            <div style="display:flex;align-items:center;justify-content:center;height:calc(100% - 40px)">
+                <canvas id="paymentChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Tablas ─────────────────────────────────────────────────────────── -->
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="table-card">
+            <div class="table-card-header">
+                <span class="table-card-title"><i class="fas fa-receipt me-2" style="color:var(--primary-light)"></i>Últimas ventas</span>
+                <a href="{{ url_for('ventas.historial') }}" class="btn-link-soft">Ver todo <i class="fas fa-arrow-right ms-1"></i></a>
+            </div>
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Hora</th>
+                            <th>Total</th>
+                            <th>Pago</th>
+                            <th>Cliente</th>
+                            <th>Vendedor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in ultimas_ventas %}
+                        <tr>
+                            <td><span class="text-muted-custom">#{{ v.id }}</span></td>
+                            <td>{{ v.fecha[11:16] if v.fecha else '—' }}</td>
+                            <td><strong>{{ v.total | formatear_moneda }}</strong></td>
+                            <td>
+                                <span class="badge-payment badge-{{ v.tipo_pago.lower().replace('é','e') }}">
+                                    {{ v.tipo_pago }}
+                                </span>
+                            </td>
+                            <td>{{ v.cliente_nombre or '—' }}</td>
+                            <td>{{ v.vendedor }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4" style="color:var(--text-muted)">
+                                <i class="fas fa-ice-cream fa-2x mb-2 d-block" style="opacity:0.3"></i>
+                                Sin ventas registradas aún
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="table-card">
+            <div class="table-card-header">
+                <span class="table-card-title">
+                    <i class="fas fa-triangle-exclamation me-2" style="color:var(--warning)"></i>
+                    Créditos pendientes
+                </span>
+                <a href="{{ url_for('clientes.index') }}" class="btn-link-soft">Ver <i class="fas fa-arrow-right ms-1"></i></a>
+            </div>
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Deuda</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in clientes_credito %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('clientes.detalle', cid=c.id) }}"
+                                   style="color:var(--text-primary);text-decoration:none">
+                                    {{ c.nombre }}
+                                </a>
+                            </td>
+                            <td style="color:var(--warning);font-weight:600">
+                                {{ c.saldo_credito | formatear_moneda }}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="2" class="text-center py-4" style="color:var(--text-muted)">
+                                <i class="fas fa-circle-check fa-2x mb-2 d-block" style="color:var(--success);opacity:0.5"></i>
+                                Sin créditos pendientes ✅
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Top Productos -->
+        {% if top_productos %}
+        <div class="table-card mt-3">
+            <div class="table-card-header">
+                <span class="table-card-title"><i class="fas fa-trophy me-2" style="color:var(--accent)"></i>Top productos hoy</span>
+            </div>
+            <div class="px-3 py-2">
+                {% for p in top_productos %}
+                <div class="d-flex justify-content-between align-items-center py-2"
+                     style="border-bottom: 1px solid var(--border-color)">
+                    <span style="font-size:0.85rem">
+                        {{ p.nombre }}
+                        {% if p.variante %}<small class="text-muted-custom">({{ p.variante }})</small>{% endif %}
+                    </span>
+                    <span class="badge" style="background:rgba(139,92,246,0.15);color:var(--primary-light)">
+                        ×{{ p.cantidad }}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Alertas de Stock -->
+        {% if bajo_stock %}
+        <div class="table-card mt-3">
+            <div class="table-card-header">
+                <span class="table-card-title">
+                    <i class="fas fa-triangle-exclamation me-2" style="color:var(--danger)"></i>
+                    Alertas de Stock Bajo
+                </span>
+                <a href="{{ url_for('productos.index') }}" class="btn-link-soft">Ver todo</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table mb-0" style="font-size:0.85rem">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th class="text-center">Stock</th>
+                            <th class="text-center">Mín</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in bajo_stock %}
+                        <tr>
+                            <td>{{ p.nombre }}</td>
+                            <td class="text-center">
+                                <span class="stock-badge {% if p.stock <= 0 %}empty{% else %}low{% endif %}">
+                                    {{ p.stock | int }}
+                                </span>
+                            </td>
+                            <td class="text-center text-muted-custom">{{ p.stock_minimo | int }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const labelsChart = {{ labels_dias | tojson }};
+const valoresChart = {{ valores_dias | tojson }};
+const pagosData = {{ pagos_hoy | tojson }};
+
+// ── Bar Chart ────────────────────────────────────────────────────────────────
+new Chart(document.getElementById('salesChart'), {
+    type: 'bar',
+    data: {
+        labels: labelsChart,
+        datasets: [{
+            label: 'Total ventas ($)',
+            data: valoresChart,
+            backgroundColor: 'rgba(139,92,246,0.25)',
+            borderColor: '#8B5CF6',
+            borderWidth: 2,
+            borderRadius: 8,
+            borderSkipped: false,
+            hoverBackgroundColor: 'rgba(139,92,246,0.4)',
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: ctx => ' $' + ctx.parsed.y.toLocaleString('es-CO')
+                }
+            }
+        },
+        scales: {
+            x: {
+                ticks: { color: '#64748B', font: { size: 11 } },
+                grid: { color: 'rgba(255,255,255,0.04)' },
+            },
+            y: {
+                ticks: {
+                    color: '#64748B',
+                    font: { size: 11 },
+                    callback: v => '$' + v.toLocaleString('es-CO')
+                },
+                grid: { color: 'rgba(255,255,255,0.04)' },
+            }
+        }
+    }
+});
+
+// ── Pie Chart ────────────────────────────────────────────────────────────────
+const pieCanvas = document.getElementById('paymentChart');
+if (pagosData.length > 0) {
+    new Chart(pieCanvas, {
+        type: 'doughnut',
+        data: {
+            labels: pagosData.map(p => p.tipo_pago),
+            datasets: [{
+                data: pagosData.map(p => p.total),
+                backgroundColor: [
+                    'rgba(16,185,129,0.7)',
+                    'rgba(59,130,246,0.7)',
+                    'rgba(245,158,11,0.7)',
+                    'rgba(236,72,153,0.7)',
+                ],
+                borderColor: ['#10B981','#3B82F6','#F59E0B','#EC4899'],
+                borderWidth: 2,
+                hoverOffset: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            cutout: '65%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#94A3B8',
+                        font: { size: 11 },
+                        padding: 16,
+                        usePointStyle: true,
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ' $' + ctx.parsed.toLocaleString('es-CO')
+                    }
+                }
+            }
+        }
+    });
+} else {
+    pieCanvas.parentElement.innerHTML = `
+        <div style="text-align:center;color:var(--text-muted);padding:40px 20px">
+            <i class="fas fa-chart-pie fa-3x mb-3 d-block" style="opacity:0.2"></i>
+            Sin ventas hoy
+        </div>`;
+}
+</script>
+{% endblock %}
