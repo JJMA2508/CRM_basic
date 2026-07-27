@@ -1,3 +1,10 @@
+import sys
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
 from flask import Flask, redirect, url_for, session
 from config import Config
 from database import init_db, close_db
@@ -111,11 +118,62 @@ def create_app():
 
     @app.route('/')
     def index():
-        return redirect(url_for('dashboard.index'))
+        from flask import session
+        if 'user_id' in session:
+            return redirect(url_for('dashboard.index'))
+        return redirect(url_for('auth.login'))
+
+    @app.route('/precios')
+    def precios():
+        from flask import render_template
+        return render_template('landing.html')
+
+    @app.route('/robots.txt')
+    def robots():
+        from flask import Response
+        content = """User-agent: *
+Allow: /
+Allow: /precios
+Allow: /login
+Disallow: /dashboard/
+Disallow: /ventas/
+Disallow: /superadmin/
+Disallow: /api/
+
+Sitemap: https://kajita.online/sitemap.xml
+"""
+        return Response(content, mimetype='text/plain')
+
+    @app.route('/sitemap.xml')
+    def sitemap():
+        from flask import Response
+        content = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://kajita.online/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://kajita.online/precios</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://kajita.online/login</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+</urlset>"""
+        return Response(content, mimetype='application/xml')
 
     return app
 
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(
+        host=app.config.get('HOST', '0.0.0.0'),
+        port=app.config.get('PORT', 5000),
+        debug=app.config.get('DEBUG', False)
+    )

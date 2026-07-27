@@ -57,6 +57,11 @@ def init_db():
     db.execute("PRAGMA foreign_keys = ON;")
 
     db.executescript('''
+        CREATE TABLE IF NOT EXISTS saas_config (
+            clave TEXT PRIMARY KEY,
+            valor TEXT
+        );
+
         CREATE TABLE IF NOT EXISTS comercios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nombre TEXT NOT NULL,
@@ -364,9 +369,13 @@ def init_db():
                     print(f"Error al migrar tabla comercios: {e}")
                     db.rollback()
 
-    # Insertar comercios y datos iniciales solo si la tabla comercios está vacía
+    # Insertar comercios y datos iniciales solo si la tabla comercios está vacía Y SEED_DEMO_DATA=true explícitamente
     count = db.execute('SELECT COUNT(*) FROM comercios').fetchone()[0]
-    if count == 0:
+    seed_allowed = os.environ.get('SEED_DEMO_DATA', 'false').lower() in ('true', '1', 't')
+    if count == 0 and seed_allowed:
+        super_email = os.environ.get('SUPERADMIN_EMAIL', 'super@saas.com').strip().lower()
+        super_pass = os.environ.get('SUPERADMIN_PASSWORD', 'super123').strip()
+
         # 1. HELADERÍA DEMO
         cur = db.execute('''
             INSERT INTO comercios (nombre, tipo, logo_emoji, api_key)
@@ -382,7 +391,7 @@ def init_db():
         db.execute('''
             INSERT INTO usuarios (comercio_id, nombre, email, password_hash, rol)
             VALUES (?, ?, ?, ?, ?)
-        ''', (heladeria_id, 'Super Administrador', 'super@saas.com', generate_password_hash('super123'), 'superadmin'))
+        ''', (heladeria_id, 'Super Administrador', super_email, generate_password_hash(super_pass), 'superadmin'))
 
         productos_heladeria = [
             ('Helado Maracuyá',          'Helados',   'Por bola', 4000),
