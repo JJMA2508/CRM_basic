@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['app.py'],
+    ['run_server.py'],
     pathex=[],
     binaries=[],
     datas=[('templates', 'templates'), ('static', 'static')],

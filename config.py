@@ -5,7 +5,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'kajita-crm-secret-key-prod-2026-kajita-online')
     
-    # En Vercel el disco de la aplicación es de SOLO LECTURA, la única carpeta escribible es /tmp
     if os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV'):
         DATABASE = '/tmp/antojitos.db'
     else:

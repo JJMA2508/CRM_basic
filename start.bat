@@ -46,6 +46,6 @@ echo  Para cerrar el servidor presiona: Ctrl + C
 echo.
 
 start http://localhost:5000
-py -3 app.py
+py -3 run_server.py
 
 pause

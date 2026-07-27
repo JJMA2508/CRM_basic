@@ -20,11 +20,20 @@ from routes.compras import compras_bp
 from routes.caja import caja_bp
 from routes.superadmin import superadmin_bp
 from routes.usuarios import usuarios_bp
+from flask_wtf.csrf import CSRFProtect
+from utils import limiter
 
+csrf = CSRFProtect()
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+
+    # Inicializar extensiones de seguridad
+    csrf.init_app(app)
+    csrf.exempt(api_bp)  # Las peticiones de la API (n8n/automatización) no necesitan CSRF token
+    
+    limiter.init_app(app)
 
     # Inicializar BD al arrancar
     with app.app_context():

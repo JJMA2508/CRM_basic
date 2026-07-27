@@ -28,7 +28,7 @@ cmd = [
     "--console",
     "--add-data", "templates;templates",
     "--add-data", "static;static",
-    "app.py"
+    "run_server.py"
 ]
 
 print("[RUN] Ejecutando PyInstaller (esto puede tardar unos minutos)...")

@@ -1,0 +1,11 @@
+*.db
+*.sqlite
+*.sqlite3
+*.pyc
+__pycache__/
+.env
+scratch/
+*.zip
+.vscode/
+.idea/
+instance/
